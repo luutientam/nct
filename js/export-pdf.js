@@ -215,11 +215,20 @@ async function genPdf() {
   `;
 
   try {
+    await document.fonts.ready;
+
     const container = document.createElement('div');
     container.style.position = 'fixed';
-    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.width = '794px';
+    container.style.visibility = 'hidden';
+    container.style.pointerEvents = 'none';
+    container.style.zIndex = '-1';
     container.innerHTML = html;
     document.body.appendChild(container);
+
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const filename = `Bao_cao_bao_mat_${safeFilename(proj.name, proj.date)}.pdf`;
 
@@ -230,7 +239,10 @@ async function genPdf() {
       html2canvas: {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#0a0f1a'
+        backgroundColor: '#0a0f1a',
+        logging: false,
+        windowWidth: container.scrollWidth,
+        windowHeight: container.scrollHeight
       },
       jsPDF: {
         unit: 'mm',
