@@ -212,13 +212,13 @@ async function genDocx() {
       styles: {
         default: { document: { run: { font: FONT, size: 21 } }, paragraph: { spacing: { line: 380 } } },
         paragraphStyles: [
-          { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 32, bold: true, font: FONT, color: 'F8FAFC' }, paragraph: { spacing: { before: 400, after: 240 }, outlineLevel: 0 } },
-          { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 26, bold: true, font: FONT, color: CLR_ACCENT }, paragraph: { spacing: { before: 320, after: 180 }, outlineLevel: 1 } },
-          { id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 24, bold: true, font: FONT, color: CLR_ACCENT2 }, paragraph: { spacing: { before: 260, after: 140 }, outlineLevel: 2 } },
+          { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 32, bold: true, font: FONT, color: CLR_MAIN }, paragraph: { spacing: { before: 400, after: 240 }, outlineLevel: 0 } },
+          { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 26, bold: true, font: FONT, color: CLR_HEAD }, paragraph: { spacing: { before: 320, after: 180 }, outlineLevel: 1 } },
+          { id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 24, bold: true, font: FONT, color: CLR_SEC }, paragraph: { spacing: { before: 260, after: 140 }, outlineLevel: 2 } },
         ]
       },
       sections: [{
-        properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 }, color: { pageColor: '0F172A' } } },
+        properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 }, color: { pageColor: 'FFFFFF' } } },
         children: [...coverChildren, ...summaryChildren, ...ovTableSection, ...detailsChildren]
       }]
     });
