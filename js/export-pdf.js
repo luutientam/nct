@@ -56,7 +56,6 @@ async function genPdf() {
 
     .pdf-wrap {
       width: 210mm;
-      min-height: 297mm;
       padding: 20mm;
       background: #0a0f1a;
       page-break-after: always;
