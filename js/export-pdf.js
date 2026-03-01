@@ -1,13 +1,3 @@
-function escHtml(s) {
-  if (s == null || s === undefined) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/\n/g, '<br>');
-}
-
 function safeFilename(name, dateStr) {
   const base = (name || 'Bao_cao')
     .replace(/\s+/g, '_')
@@ -18,65 +8,19 @@ function safeFilename(name, dateStr) {
   return d ? `${base}_${d}` : base;
 }
 
-function getPdfHtml(proj, vulns, counts, SEV_VN) {
-  const font = "'Be Vietnam Pro', sans-serif";
-  const style = `
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 15mm; font-family: ${font}; font-size: 11pt; color: #111; background: #fff; }
-    #pdf-content { width: 210mm; }
-    table { width: 100%; border-collapse: collapse; margin: 6pt 0; font-size: 10pt; }
-    th, td { border: 1px solid #333; padding: 4pt 6pt; text-align: left; }
-    th { background: #eee; }
-    .tit { font-size: 17pt; font-weight: 700; text-align: center; margin: 0 0 4pt; }
-    .sub { font-size: 11pt; text-align: center; margin: 0 0 10pt; color: #444; }
-    .h { font-size: 11pt; font-weight: 700; margin: 8pt 0 3pt; }
-    .block { margin: 2pt 0 8pt; padding: 5pt; background: #f5f5f5; border-left: 3px solid #333; white-space: pre-wrap; }
-    .vuln { page-break-inside: avoid; margin-bottom: 10pt; }
-  `;
-  return `
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <title>Báo cáo</title>
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;700&display=swap" rel="stylesheet">
-  <style>${style}</style>
-</head>
-<body>
-  <div id="pdf-content">
-    <div class="tit">BÁO CÁO KIỂM THỬ BẢO MẬT</div>
-    <div class="sub">${escHtml(proj.name)} — ${escHtml(proj.date)}</div>
-    <table>
-      <tr><td style="width:26%;font-weight:700">Dự án</td><td>${escHtml(proj.name)}</td></tr>
-      <tr><td style="font-weight:700">Mục tiêu</td><td>${escHtml(proj.target)}</td></tr>
-      <tr><td style="font-weight:700">Đơn vị / Kiểm thử viên</td><td>${escHtml(proj.org)} — ${escHtml(proj.auditor)}</td></tr>
-      <tr><td style="font-weight:700">Phạm vi</td><td>${escHtml(proj.scope) || '—'}</td></tr>
-    </table>
-    <div class="h">Thống kê</div>
-    <table>
-      <tr><th>Mức độ</th><th>Số lượng</th></tr>
-      ${['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'].map(s => `
-        <tr><td>${SEV_VN[s]}</td><td>${counts[s]}</td></tr>
-      `).join('')}
-    </table>
-    ${vulns.map((v, i) => `
-      <div class="vuln">
-        <div class="h">${i + 1}. ${escHtml(v.name)}</div>
-        <table>
-          <tr><td style="width:26%;font-weight:700">Mức độ</td><td>${SEV_VN[v.severity] || v.severity}</td></tr>
-          <tr><td style="font-weight:700">Vị trí</td><td>${escHtml(v.location)}</td></tr>
-        </table>
-        <div class="h">Cách khai thác</div>
-        <div class="block">${escHtml(v.exploit) || '—'}</div>
-        <div class="h">Khuyến nghị</div>
-        <div class="block">${escHtml(v.recommend) || '—'}</div>
-        <div class="h">Tham chiếu</div>
-        <div class="block">${escHtml(v.refs) || '—'}</div>
-      </div>
-    `).join('')}
-  </div>
-</body>
-</html>`;
+function plainText(s) {
+  if (s == null || s === undefined) return '';
+  return String(s).trim() || '—';
+}
+
+function arrayBufferToBase64(ab) {
+  const bytes = new Uint8Array(ab);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
 }
 
 async function genPdf() {
@@ -94,56 +38,120 @@ async function genPdf() {
   toast('Đang tạo file PDF...', 'in');
 
   const proj = getProj();
-  const projWithDate = { ...proj, date: fmtDate(proj.date) };
   const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0 };
   vulns.forEach(v => { counts[v.severity] = (counts[v.severity] || 0) + 1; });
 
-  const html = getPdfHtml(projWithDate, vulns, counts, SEV_VN);
-
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;width:794px;height:1123px;top:0;left:0;border:none;z-index:-1;opacity:0;';
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentDocument;
-  doc.open();
-  doc.write(html);
-  doc.close();
-
-  await new Promise((resolve) => {
-    if (iframe.contentWindow.document.readyState === 'complete') resolve();
-    else iframe.onload = resolve;
-  });
-  await iframe.contentWindow.document.fonts.ready;
-  await new Promise(r => setTimeout(r, 400));
-
-  const target = doc.getElementById('pdf-content');
-  const filename = `Bao_cao_bao_mat_${safeFilename(proj.name, proj.date)}.pdf`;
-
+  let fontBase64 = null;
   try {
-    await html2pdf().set({
-      margin: 0,
-      filename,
-      image: { type: 'jpeg', quality: 0.96 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: 'css' }
-    }).from(target).save();
-
-    toast('Xuất PDF thành công!', 'ok');
-  } catch (err) {
-    console.error(err);
-    const w = window.open('', '_blank');
-    if (w) {
-      w.document.write(getPdfHtml(projWithDate, vulns, counts, SEV_VN));
-      w.document.close();
-      setTimeout(() => w.print(), 500);
-      toast('Chọn "Lưu dưới dạng PDF" trong hộp thoại in.', 'in');
-    } else {
-      toast('Lỗi khi tạo PDF.', 'er');
-    }
-  } finally {
-    document.body.removeChild(iframe);
+    const res = await fetch('fonts/times.ttf');
+    if (res.ok) fontBase64 = arrayBufferToBase64(await res.arrayBuffer());
+  } catch (e) {
+    console.warn(e);
   }
+
+  const JsPDF = window.jspdf?.jsPDF || window.jspdf;
+  const doc = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+  const fontName = 'Times';
+  if (fontBase64) {
+    try {
+      doc.addFileToVFS('times.ttf', fontBase64);
+      doc.addFont('times.ttf', fontName, 'normal');
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+  function setFont(bold) {
+    if (fontBase64) doc.setFont(fontName, 'normal');
+    else doc.setFont('helvetica', bold ? 'bold' : 'normal');
+  }
+
+  const MARGIN = 20;
+  const PAGE_W = 210;
+  const PAGE_H = 297;
+  const CONTENT_W = PAGE_W - MARGIN * 2;
+  const LINE_H = 5.5;
+  let y = MARGIN;
+
+  function nextLine(h) {
+    y += h ?? LINE_H;
+    if (y > PAGE_H - MARGIN) {
+      doc.addPage();
+      y = MARGIN;
+    }
+  }
+
+  function putTitle(text, size) {
+    doc.setFontSize(size || 16);
+    setFont(true);
+    doc.text(text, PAGE_W / 2, y, { align: 'center' });
+    nextLine(8);
+  }
+
+  function putLine(label, value) {
+    doc.setFontSize(10);
+    setFont(true);
+    doc.text(label + ':', MARGIN, y);
+    setFont(false);
+    const lines = doc.splitTextToSize(plainText(value), CONTENT_W - 45);
+    doc.text(lines, MARGIN + 42, y);
+    nextLine(lines.length * LINE_H);
+  }
+
+  function putHeading(text) {
+    nextLine(3);
+    doc.setFontSize(11);
+    setFont(true);
+    doc.text(text, MARGIN, y);
+    nextLine(6);
+  }
+
+  function putBlock(text) {
+    setFont(false);
+    doc.setFontSize(9);
+    const lines = doc.splitTextToSize(plainText(text), CONTENT_W);
+    doc.text(lines, MARGIN, y);
+    nextLine(lines.length * LINE_H + 2);
+  }
+
+  putTitle('BÁO CÁO KIỂM THỬ BẢO MẬT', 18);
+  doc.setFontSize(10);
+  setFont(false);
+  doc.text(plainText(proj.name) + ' — ' + plainText(fmtDate(proj.date)), PAGE_W / 2, y, { align: 'center' });
+  nextLine(10);
+
+  putLine('Dự án', proj.name);
+  putLine('Mục tiêu', proj.target);
+  putLine('Đơn vị kiểm thử', proj.org);
+  putLine('Kiểm thử viên', proj.auditor);
+  putLine('Ngày kiểm thử', fmtDate(proj.date));
+  putLine('Phạm vi', proj.scope);
+  nextLine(3);
+
+  putHeading('Thống kê lỗ hổng');
+  ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'].forEach(s => {
+    setFont(false);
+    doc.text(SEV_VN[s] + ': ' + counts[s], MARGIN, y);
+    nextLine();
+  });
+  nextLine(5);
+
+  vulns.forEach((v, i) => {
+    putHeading((i + 1) + '. ' + plainText(v.name));
+    putLine('Mức độ', SEV_VN[v.severity] || v.severity);
+    putLine('Vị trí', v.location);
+    putHeading('Cách khai thác');
+    putBlock(v.exploit);
+    putHeading('Khuyến nghị');
+    putBlock(v.recommend);
+    putHeading('Tham chiếu');
+    putBlock(v.refs);
+    nextLine(5);
+  });
+
+  const filename = `Bao_cao_bao_mat_${safeFilename(proj.name, proj.date)}.pdf`;
+  doc.save(filename);
+  toast('Xuất PDF thành công!', 'ok');
 }
 
 window.genPdf = genPdf;
