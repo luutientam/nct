@@ -9,6 +9,12 @@ function escHtml(s) {
     .replace(/\n/g, '<br>');
 }
 
+function safeFilename(name, dateStr) {
+  const base = (name || 'Bao_cao').replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '');
+  const d = (dateStr || '').replace(/\//g, '-').replace(/[^\d\-]/g, '');
+  return d ? `${base}_${d}` : base;
+}
+
 async function genPdf() {
   const vulns = window.vulns;
   const getProj = window.getProj;
@@ -24,23 +30,27 @@ async function genPdf() {
   vulns.forEach(v => { counts[v.severity] = (counts[v.severity] || 0) + 1; });
 
   const fontFamily = "'Be Vietnam Pro', 'Plus Jakarta Sans', sans-serif";
+  const A4_W = 794;
+  const A4_H = 1123;
+  const PAD = 76;
   const style = `
     * { box-sizing: border-box; }
-    body { margin: 0; padding: 0; font-family: ${fontFamily}; font-size: 11pt; color: #dde8ff; background: #070b16; }
-    .pdf-wrap { width: 210mm; min-height: 297mm; padding: 20mm; background: #070b16; }
-    .pdf-title { font-size: 28pt; font-weight: 700; color: #00e5ff; text-align: center; margin: 24pt 0 8pt; }
-    .pdf-sub { font-size: 14pt; color: #7c3aed; text-align: center; margin-bottom: 20pt; }
-    .pdf-hr { border: none; border-top: 2px solid #2a3f70; margin: 16pt 0; }
-    .pdf-table { width: 100%; border-collapse: collapse; margin: 12pt 0; font-size: 10pt; }
-    .pdf-table th, .pdf-table td { border: 1px solid #2a3f70; padding: 8pt 10pt; text-align: left; }
+    #pdf-content { width: ${A4_W}px; font-family: ${fontFamily}; font-size: 11pt; color: #dde8ff; background: #0a0f1a !important; }
+    .pdf-wrap { width: ${A4_W}px; min-height: ${A4_H}px; padding: ${PAD}px; background: #0a0f1a !important; page-break-after: always; overflow: hidden; }
+    .pdf-wrap:last-child { page-break-after: auto; }
+    .pdf-title { font-size: 26pt; font-weight: 700; color: #00e5ff; text-align: center; margin: 20pt 0 6pt; }
+    .pdf-sub { font-size: 13pt; color: #7c3aed; text-align: center; margin-bottom: 16pt; }
+    .pdf-hr { border: none; border-top: 2px solid #2a3f70; margin: 12pt 0; }
+    .pdf-table { width: 100%; border-collapse: collapse; margin: 10pt 0; font-size: 10pt; table-layout: fixed; }
+    .pdf-table th, .pdf-table td { border: 1px solid #2a3f70; padding: 6pt 8pt; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
     .pdf-table th { background: #1a2240; color: #00e5ff; font-weight: 700; }
     .pdf-table tr:nth-child(even) td { background: #0c1020; }
     .pdf-table tr:nth-child(odd) td { background: #111827; }
-    .pdf-label { width: 35%; background: #121830 !important; color: #00e5ff; font-weight: 700; }
-    .pdf-h1 { font-size: 18pt; font-weight: 700; color: #fff; margin: 28pt 0 12pt; }
-    .pdf-h2 { font-size: 14pt; font-weight: 700; color: #00e5ff; margin: 18pt 0 8pt; }
-    .pdf-h3 { font-size: 12pt; font-weight: 700; color: #7c3aed; margin: 14pt 0 6pt; }
-    .pdf-block { background: #0c1020; border: 1px solid #1e2d50; border-left: 4px solid #00e5ff; padding: 12pt; margin: 10pt 0; line-height: 1.6; }
+    .pdf-label { width: 32%; background: #121830 !important; color: #00e5ff; font-weight: 700; }
+    .pdf-h1 { font-size: 16pt; font-weight: 700; color: #fff; margin: 20pt 0 10pt; page-break-after: avoid; }
+    .pdf-h2 { font-size: 14pt; font-weight: 700; color: #00e5ff; margin: 16pt 0 8pt; page-break-after: avoid; }
+    .pdf-h3 { font-size: 11pt; font-weight: 700; color: #7c3aed; margin: 12pt 0 6pt; page-break-after: avoid; }
+    .pdf-block { background: #0c1020; border: 1px solid #1e2d50; border-left: 4px solid #00e5ff; padding: 10pt; margin: 8pt 0; line-height: 1.55; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
     .pdf-block.crit { border-left-color: #ff3366; }
     .pdf-block.rec { border-left-color: #00ff88; }
     .pdf-block.ref { border-left-color: #7c3aed; }
@@ -51,14 +61,14 @@ async function genPdf() {
     .sev-i { color: #6b7280; font-weight: 700; }
     .pdf-badge { display: inline-block; padding: 2pt 8pt; border-radius: 4pt; font-size: 9pt; font-weight: 700; }
     .pdf-cover-table .pdf-label { width: 28%; }
-    .pdf-warn { text-align: center; color: #ff3366; font-weight: 700; margin: 20pt 0; font-size: 12pt; }
-    .pdf-footer { margin-top: 24pt; padding-top: 12pt; border-top: 1px solid #2a3f70; font-size: 9pt; color: #6a7ba8; }
+    .pdf-warn { text-align: center; color: #ff3366; font-weight: 700; margin: 16pt 0; font-size: 11pt; }
+    .pdf-footer { margin-top: 20pt; padding-top: 10pt; border-top: 1px solid #2a3f70; font-size: 9pt; color: #6a7ba8; }
     .pdf-page-break { page-break-before: always; }
   `;
 
   const html = `
     <style>${style}</style>
-    <div id="pdf-content" style="background:#070b16;color:#dde8ff;width:210mm;font-family:${fontFamily};">
+    <div id="pdf-content" style="background:#0a0f1a;color:#dde8ff;width:${A4_W}px;font-family:${fontFamily};">
     <div class="pdf-wrap">
       <div class="pdf-title">BÁO CÁO KIỂM THỬ BẢO MẬT</div>
       <div class="pdf-sub">SECURITY ASSESSMENT REPORT</div>
@@ -135,23 +145,32 @@ async function genPdf() {
   try {
     const container = document.createElement('div');
     container.id = 'pdf-export-container';
-    container.style.cssText = 'position:fixed;left:50%;top:0;transform:translateX(-50%);width:210mm;max-width:100%;z-index:10000;background:#070b16;color:#dde8ff;max-height:100vh;overflow:auto;box-shadow:0 0 0 100vmax rgba(0,0,0,.8);';
+    container.style.cssText = `position:fixed;left:50%;top:0;transform:translateX(-50%);width:${A4_W}px;z-index:10000;background:#0a0f1a;color:#dde8ff;max-height:100vh;overflow:auto;box-shadow:0 0 0 100vmax rgba(0,0,0,.85);`;
     container.innerHTML = html;
     document.body.appendChild(container);
     const contentEl = container.querySelector('#pdf-content');
-    if (contentEl) contentEl.style.background = '#070b16';
+    const filename = `Bao_cao_bao_mat_${safeFilename(proj.name, proj.date)}.pdf`;
     const opt = {
-      margin: [10, 10, 10, 10],
-      filename: `Security_Report_${(proj.name || 'report').replace(/\s+/g, '_')}_${proj.date || 'report'}.pdf`,
-      image: { type: 'jpeg', quality: 0.95 },
+      margin: 0,
+      filename,
+      image: { type: 'jpeg', quality: 0.92 },
       html2canvas: {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#070b16',
-        allowTaint: true,
+        windowWidth: A4_W,
+        onclone: function (clonedDoc, el) {
+          const root = el.querySelector('#pdf-content');
+          if (root) {
+            root.style.backgroundColor = '#0a0f1a';
+            root.style.width = A4_W + 'px';
+          }
+          el.querySelectorAll('.pdf-wrap').forEach(function (w) {
+            w.style.backgroundColor = '#0a0f1a';
+          });
+        },
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait', hotfixes: ['px_scaling'] },
       pagebreak: { mode: 'css', before: '.pdf-page-break' },
     };
     await html2pdf().set(opt).from(contentEl || container).save();

@@ -23,24 +23,23 @@ async function genDocx() {
     const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0 };
     vulns.forEach(v => { counts[v.severity] = (counts[v.severity] || 0) + 1; });
 
-    const def = { style: BorderStyle.SINGLE, size: 1, color: '334155' };
+    const def = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
     const brd = { top: def, bottom: def, left: def, right: def };
 
     const FONT = 'Arial';
-    const CLR_ACCENT = '22D3EE';
-    const CLR_ACCENT2 = 'A78BFA';
-    const CLR_BODY = 'E2E8F0';
-    const CLR_SEC = '94A3B8';
-    const BG_HEADER = '1E293B';
-    const BG_CELL = '0F172A';
-    const BG_LABEL = '1E293B';
+    const CLR_MAIN = '000000';
+    const CLR_HEAD = '1E3A5F';
+    const CLR_SEC = '374151';
+    const BG_HEADER = 'E5E7EB';
+    const BG_CELL = 'FFFFFF';
+    const BG_LABEL = 'F3F4F6';
 
     function hdrCell(txt, w) {
       return new TableCell({
         borders: brd, width: { size: w, type: WidthType.DXA },
         shading: { fill: BG_HEADER, type: ShadingType.CLEAR },
         margins: { top: 140, bottom: 140, left: 160, right: 160 },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: txt, bold: true, color: CLR_ACCENT, size: 22, font: FONT })] })]
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: txt, bold: true, color: CLR_HEAD, size: 22, font: FONT })] })]
       });
     }
     function dataCell(txt, w, clr) {
@@ -48,22 +47,22 @@ async function genDocx() {
         borders: brd, width: { size: w, type: WidthType.DXA },
         shading: { fill: BG_CELL, type: ShadingType.CLEAR },
         margins: { top: 120, bottom: 120, left: 160, right: 160 },
-        children: [new Paragraph({ children: [new TextRun({ text: String(txt || '—').trim(), size: 21, color: clr || CLR_BODY, font: FONT })], spacing: { line: 380 } })]
+        children: [new Paragraph({ children: [new TextRun({ text: String(txt || '—').trim(), size: 21, color: clr || CLR_MAIN, font: FONT })], spacing: { line: 380 } })]
       });
     }
     function infoRow(label, val) {
       return new TableRow({
         children: [
           new TableCell({ borders: brd, width: { size: 3000, type: WidthType.DXA }, shading: { fill: BG_LABEL, type: ShadingType.CLEAR }, margins: { top: 120, bottom: 120, left: 180, right: 180 },
-            children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 21, color: CLR_ACCENT, font: FONT })] })] }),
+            children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 21, color: CLR_HEAD, font: FONT })] })] }),
           new TableCell({ borders: brd, width: { size: 6360, type: WidthType.DXA }, shading: { fill: BG_CELL, type: ShadingType.CLEAR }, margins: { top: 120, bottom: 120, left: 180, right: 180 },
-            children: [new Paragraph({ children: [new TextRun({ text: String(val || '—').trim(), size: 21, color: CLR_BODY, font: FONT })], spacing: { line: 380 } })] })
+            children: [new Paragraph({ children: [new TextRun({ text: String(val || '—').trim(), size: 21, color: CLR_MAIN, font: FONT })], spacing: { line: 380 } })] })
         ]
       });
     }
     function sevCell(sev, w) {
       const c = SEV_DOCX_COLOR[sev] || CLR_SEC;
-      const bg = SEV_DOCX_BG[sev] || '1E293B';
+      const bg = SEV_DOCX_BG[sev] || 'F3F4F6';
       return new TableCell({
         borders: brd, width: { size: w, type: WidthType.DXA },
         shading: { fill: bg, type: ShadingType.CLEAR },
@@ -72,22 +71,22 @@ async function genDocx() {
       });
     }
     function h2p(txt) {
-      return new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: txt, size: 26, bold: true, color: CLR_ACCENT, font: FONT })], spacing: { before: 320, after: 180, line: 380 } });
+      return new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: txt, size: 26, bold: true, color: CLR_HEAD, font: FONT })], spacing: { before: 320, after: 180, line: 380 } });
     }
     function h3p(txt) {
-      return new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun({ text: txt, size: 24, bold: true, color: CLR_ACCENT2, font: FONT })], spacing: { before: 260, after: 140, line: 340 } });
+      return new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun({ text: txt, size: 24, bold: true, color: CLR_SEC, font: FONT })], spacing: { before: 260, after: 140, line: 340 } });
     }
     function bodyP(txt) {
       const s = String(txt || '').trim();
       if (!s) return [new Paragraph({ children: [new TextRun({ text: ' ', font: FONT })], spacing: { after: 100 } })];
-      return s.split(/\r?\n/).map(line => new Paragraph({ children: [new TextRun({ text: line || ' ', size: 21, color: CLR_BODY, font: FONT })], spacing: { after: 100, line: 380 } }));
+      return s.split(/\r?\n/).map(line => new Paragraph({ children: [new TextRun({ text: line || ' ', size: 21, color: CLR_MAIN, font: FONT })], spacing: { after: 100, line: 380 } }));
     }
     function sp(n = 1) { return Array(n).fill(new Paragraph({ children: [new TextRun({ text: ' ', font: FONT })], spacing: { after: 80 } })); }
 
     const coverChildren = [
-      new Paragraph({ spacing: { before: 900, after: 240 }, children: [new TextRun({ text: 'BÁO CÁO KIỂM THỬ BẢO MẬT', bold: true, size: 52, color: CLR_ACCENT, font: FONT })], alignment: AlignmentType.CENTER }),
-      new Paragraph({ spacing: { after: 520 }, children: [new TextRun({ text: 'SECURITY ASSESSMENT REPORT', size: 26, color: CLR_ACCENT2, font: FONT })], alignment: AlignmentType.CENTER }),
-      new Paragraph({ spacing: { after: 240 }, children: [], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: '334155' } } }),
+      new Paragraph({ spacing: { before: 900, after: 240 }, children: [new TextRun({ text: 'BÁO CÁO KIỂM THỬ BẢO MẬT', bold: true, size: 52, color: CLR_HEAD, font: FONT })], alignment: AlignmentType.CENTER }),
+      new Paragraph({ spacing: { after: 520 }, children: [new TextRun({ text: 'SECURITY ASSESSMENT REPORT', size: 26, color: CLR_SEC, font: FONT })], alignment: AlignmentType.CENTER }),
+      new Paragraph({ spacing: { after: 240 }, children: [], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: 'CCCCCC' } } }),
       ...sp(2),
       new Table({
         width: { size: 9360, type: WidthType.DXA }, columnWidths: [3000, 6360],
@@ -109,7 +108,7 @@ async function genDocx() {
     ];
 
     const summaryChildren = [
-      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 0, after: 240 }, children: [new TextRun({ text: '1. TỔNG QUAN', bold: true, size: 32, color: 'F8FAFC', font: FONT })], spacing: { line: 400 } }),
+      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 0, after: 240 }, children: [new TextRun({ text: '1. TỔNG QUAN', bold: true, size: 32, color: CLR_MAIN, font: FONT })], spacing: { line: 400 } }),
       ...bodyP(`Báo cáo này ghi nhận kết quả kiểm thử bảo mật ${proj.name}, thực hiện bởi ${proj.auditor} (${proj.org}) ngày ${fmtDate(proj.date)}. Trưởng nhóm: ${proj.leaderName} — MSSV: ${proj.leaderMSSV} — Lớp: ${proj.leaderClass}.`),
       h3p('Phạm vi kiểm thử'),
       ...bodyP(proj.scope),
@@ -131,7 +130,7 @@ async function genDocx() {
               hdrCell('TỔNG CỘNG', 3120),
                 new TableCell({
                 borders: brd, width: { size: 3120, type: WidthType.DXA }, shading: { fill: BG_HEADER, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
-                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(vulns.length), bold: true, size: 22, color: 'F8FAFC', font: FONT })] })]
+                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(vulns.length), bold: true, size: 22, color: CLR_MAIN, font: FONT })] })]
               }),
               dataCell('100%', 3120, CLR_SEC),
             ]
@@ -153,7 +152,7 @@ async function genDocx() {
       overviewRows.push(new TableRow({
         children: [
           dataCell(String(i + 1), 800, CLR_SEC),
-          dataCell(v.name || '—', 3000, CLR_BODY),
+          dataCell(v.name || '—', 3000, CLR_MAIN),
           dataCell(v.location || '—', 3000, CLR_SEC),
           sevCell(v.severity, 1600),
           dataCell({ CRITICAL: '9.0–10.0', HIGH: '7.0–8.9', MEDIUM: '4.0–6.9', LOW: '1.0–3.9', INFO: 'N/A' }[v.severity], 1960, CLR_SEC),
@@ -162,14 +161,14 @@ async function genDocx() {
     });
 
     const ovTableSection = [
-      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 200 }, children: [new TextRun({ text: '2. DANH SÁCH LỖ HỔNG', bold: true, size: 32, color: 'F8FAFC', font: FONT })] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 200 }, children: [new TextRun({ text: '2. DANH SÁCH LỖ HỔNG', bold: true, size: 32, color: CLR_MAIN, font: FONT })] }),
       new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [800, 3000, 3000, 1600, 1960], rows: overviewRows }),
       ...sp(),
       new Paragraph({ children: [new PageBreak()] }),
     ];
 
     const detailsChildren = [
-      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 300 }, children: [new TextRun({ text: '3. CHI TIẾT LỖ HỔNG', bold: true, size: 32, color: 'F8FAFC', font: FONT })] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 300 }, children: [new TextRun({ text: '3. CHI TIẾT LỖ HỔNG', bold: true, size: 32, color: CLR_MAIN, font: FONT })] }),
     ];
     vulns.forEach((v, i) => {
       detailsChildren.push(
@@ -180,15 +179,15 @@ async function genDocx() {
             new TableRow({
               children: [
                 new TableCell({ borders: brd, width: { size: 2400, type: WidthType.DXA }, shading: { fill: BG_LABEL, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Mức độ', bold: true, size: 21, color: CLR_ACCENT, font: FONT })] })] }),
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Mức độ', bold: true, size: 21, color: CLR_HEAD, font: FONT })] })] }),
                 sevCell(v.severity, 6960),
               ]
             }),
             new TableRow({
               children: [
                 new TableCell({ borders: brd, width: { size: 2400, type: WidthType.DXA }, shading: { fill: BG_LABEL, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Vị trí lỗi', bold: true, size: 21, color: CLR_ACCENT, font: FONT })] })] }),
-                dataCell(v.location || '—', 6960, CLR_BODY),
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Vị trí lỗi', bold: true, size: 21, color: CLR_HEAD, font: FONT })] })] }),
+                dataCell(v.location || '—', 6960, CLR_MAIN),
               ]
             }),
           ]
@@ -203,7 +202,7 @@ async function genDocx() {
         h3p('Tham Chiếu'),
         ...bodyP(v.refs || '—'),
         ...sp(),
-        new Paragraph({ children: [], border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: '334155' } } }),
+        new Paragraph({ children: [], border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } } }),
         ...sp(2),
       );
       if (i < vulns.length - 1) detailsChildren.push(new Paragraph({ children: [new PageBreak()] }));
