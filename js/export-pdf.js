@@ -52,17 +52,20 @@ async function genPdf() {
   const JsPDF = window.jspdf?.jsPDF || window.jspdf;
   const doc = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
-  const fontName = 'Times';
-  if (fontBase64) {
+  const customFontName = 'TimesReport';
+  if (fontBase64 && typeof doc.addFileToVFS === 'function') {
     try {
       doc.addFileToVFS('times.ttf', fontBase64);
-      doc.addFont('times.ttf', fontName, 'normal');
+      doc.addFont('times.ttf', customFontName, 'normal');
     } catch (e) {
       console.warn(e);
+      fontBase64 = null;
     }
+  } else {
+    fontBase64 = null;
   }
   function setFont(bold) {
-    if (fontBase64) doc.setFont(fontName, 'normal');
+    if (fontBase64) doc.setFont(customFontName, 'normal');
     else doc.setFont('helvetica', bold ? 'bold' : 'normal');
   }
 
