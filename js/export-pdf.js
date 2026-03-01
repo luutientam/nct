@@ -160,14 +160,15 @@ async function genPdf() {
         logging: false,
         windowWidth: A4_W,
         onclone: function (clonedDoc, el) {
-          const root = el.querySelector('#pdf-content');
+          const target = el || (clonedDoc && clonedDoc.body);
+          if (!target) return;
+          const root = target.querySelector ? target.querySelector('#pdf-content') : null;
           if (root) {
             root.style.backgroundColor = '#0a0f1a';
             root.style.width = A4_W + 'px';
           }
-          el.querySelectorAll('.pdf-wrap').forEach(function (w) {
-            w.style.backgroundColor = '#0a0f1a';
-          });
+          const wraps = target.querySelectorAll ? target.querySelectorAll('.pdf-wrap') : [];
+          for (let i = 0; i < wraps.length; i++) wraps[i].style.backgroundColor = '#0a0f1a';
         },
       },
       jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait', hotfixes: ['px_scaling'] },
