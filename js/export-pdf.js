@@ -22,9 +22,8 @@ function getPdfHtml(proj, vulns, counts, SEV_VN) {
   const font = "'Be Vietnam Pro', sans-serif";
   const style = `
     * { box-sizing: border-box; }
-    body { margin: 0; padding: 20px; font-family: ${font}; font-size: 11pt; color: #111; background: #fff; }
-    @media print { body { padding: 0; } }
-    #pdf-content { max-width: 210mm; margin: 0 auto; }
+    body { margin: 0; padding: 15mm; font-family: ${font}; font-size: 11pt; color: #111; background: #fff; }
+    #pdf-content { width: 210mm; }
     table { width: 100%; border-collapse: collapse; margin: 6pt 0; font-size: 10pt; }
     th, td { border: 1px solid #333; padding: 4pt 6pt; text-align: left; }
     th { background: #eee; }
@@ -39,7 +38,7 @@ function getPdfHtml(proj, vulns, counts, SEV_VN) {
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Báo cáo kiểm thử bảo mật</title>
+  <title>Báo cáo</title>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;700&display=swap" rel="stylesheet">
   <style>${style}</style>
 </head>
@@ -76,16 +75,11 @@ function getPdfHtml(proj, vulns, counts, SEV_VN) {
       </div>
     `).join('')}
   </div>
-  <script>
-    window.onload = function() {
-      setTimeout(function() { window.print(); }, 300);
-    };
-  <\/script>
 </body>
 </html>`;
 }
 
-function genPdf() {
+async function genPdf() {
   const vulns = window.vulns;
   const getProj = window.getProj;
   const fmtDate = window.fmtDate;
@@ -97,20 +91,59 @@ function genPdf() {
     return;
   }
 
+  toast('Đang tạo file PDF...', 'in');
+
   const proj = getProj();
   const projWithDate = { ...proj, date: fmtDate(proj.date) };
   const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0 };
   vulns.forEach(v => { counts[v.severity] = (counts[v.severity] || 0) + 1; });
 
   const html = getPdfHtml(projWithDate, vulns, counts, SEV_VN);
-  const w = window.open('', '_blank');
-  if (!w) {
-    toast('Cho phép popup để in / lưu PDF.', 'er');
-    return;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;width:794px;height:1123px;top:0;left:0;border:none;z-index:-1;opacity:0;';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  await new Promise((resolve) => {
+    if (iframe.contentWindow.document.readyState === 'complete') resolve();
+    else iframe.onload = resolve;
+  });
+  await iframe.contentWindow.document.fonts.ready;
+  await new Promise(r => setTimeout(r, 400));
+
+  const target = doc.getElementById('pdf-content');
+  const filename = `Bao_cao_bao_mat_${safeFilename(proj.name, proj.date)}.pdf`;
+
+  try {
+    await html2pdf().set({
+      margin: 0,
+      filename,
+      image: { type: 'jpeg', quality: 0.96 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: 'css' }
+    }).from(target).save();
+
+    toast('Xuất PDF thành công!', 'ok');
+  } catch (err) {
+    console.error(err);
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write(getPdfHtml(projWithDate, vulns, counts, SEV_VN));
+      w.document.close();
+      setTimeout(() => w.print(), 500);
+      toast('Chọn "Lưu dưới dạng PDF" trong hộp thoại in.', 'in');
+    } else {
+      toast('Lỗi khi tạo PDF.', 'er');
+    }
+  } finally {
+    document.body.removeChild(iframe);
   }
-  w.document.write(html);
-  w.document.close();
-  toast('Chọn "Lưu dưới dạng PDF" trong hộp thoại in.', 'ok');
 }
 
 window.genPdf = genPdf;
