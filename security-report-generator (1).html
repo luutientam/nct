@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Report Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    :root {
+      --bg: #070b16;
+      --bg2: #0c1020;
+      --bg3: #111827;
+      --card: #141b30;
+      --card2: #1a2240;
+      --border: #1e2d50;
+      --border-b: #2a3f70;
+      --accent: #00e5ff;
+      --accent2: #7c3aed;
+      --green: #00ff88;
+      --text: #dde8ff;
+      --text-d: #6a7ba8;
+      --crit: #ff3366; --high: #ff6b35; --med: #fbbf24; --low: #38bdf8; --inf: #6b7280;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+    body{
+      background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;
+    }
+    body::before{
+      content:'';position:fixed;inset:0;
+      background-image:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);
+      background-size:48px 48px;pointer-events:none;z-index:0;
+    }
+    .wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:48px 24px 80px;}
+
+    /* ── Header ── */
+    header{text-align:center;margin-bottom:56px;}
+    .badge{display:inline-flex;align-items:center;gap:9px;background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.2);border-radius:50px;padding:7px 18px;margin-bottom:24px;font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
+    .dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:blink 2s infinite;}
+    @keyframes blink{0%,100%{opacity:1;box-shadow:0 0 6px var(--green);}50%{opacity:.4;box-shadow:none;}}
+    h1{font-size:clamp(30px,5vw,54px);font-weight:800;background:linear-gradient(140deg,#ffffff 30%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;margin-bottom:12px;}
+    .sub{color:var(--text-d);font-family:'Space Mono',monospace;font-size:13px;letter-spacing:.5px;}
+
+    /* ── Cards ── */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:28px 32px;margin-bottom:24px;position:relative;overflow:hidden;transition:border-color .3s;}
+    .card:hover{border-color:var(--border-b);}
+    .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent2),var(--accent));}
+    .card-title{display:flex;align-items:center;gap:12px;font-size:17px;font-weight:700;color:#fff;margin-bottom:24px;}
+    .card-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+
+    /* ── Form ── */
+    .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
+    .fg{display:flex;flex-direction:column;gap:7px;}
+    .fg.full{grid-column:1/-1;}
+    label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-d);font-family:'Space Mono',monospace;}
+    input,select,textarea{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 15px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;width:100%;transition:all .2s;outline:none;appearance:none;}
+    input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,.07);}
+    textarea{resize:vertical;min-height:88px;line-height:1.65;}
+    select option{background:var(--card);}
+
+    /* ── Vuln cards ── */
+    .vlist{display:flex;flex-direction:column;gap:16px;}
+    .vcard{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;animation:sli .25s ease;}
+    @keyframes sli{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+    .vcard:hover{border-color:var(--border-b);}
+    .vhdr{display:flex;align-items:center;padding:13px 18px;background:var(--bg3);gap:12px;}
+    .vnum{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-d);text-transform:uppercase;letter-spacing:1px;white-space:nowrap;}
+    .vname{font-weight:700;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;}
+    .vbody{padding:22px 22px 18px;display:none;}
+    .vcard.open .vbody{display:block;}
+    .vcaret{font-size:12px;color:var(--text-d);transition:transform .2s;margin-left:4px;}
+    .vcard.open .vcaret{transform:rotate(180deg);}
+
+    /* Severity badge */
+    .sbadge{padding:3px 11px;border-radius:20px;font-size:10px;font-weight:700;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap;}
+    .s-CRITICAL{background:rgba(255,51,102,.13);color:var(--crit);border:1px solid rgba(255,51,102,.28);}
+    .s-HIGH{background:rgba(255,107,53,.13);color:var(--high);border:1px solid rgba(255,107,53,.28);}
+    .s-MEDIUM{background:rgba(251,191,36,.13);color:var(--med);border:1px solid rgba(251,191,36,.28);}
+    .s-LOW{background:rgba(56,189,248,.13);color:var(--low);border:1px solid rgba(56,189,248,.28);}
+    .s-INFO{background:rgba(107,114,128,.13);color:var(--inf);border:1px solid rgba(107,114,128,.28);}
+
+    /* Severity select */
+    .sel-sev{font-weight:700;}
+    .sel-CRITICAL{border-color:var(--crit)!important;color:var(--crit);}
+    .sel-HIGH{border-color:var(--high)!important;color:var(--high);}
+    .sel-MEDIUM{border-color:var(--med)!important;color:var(--med);}
+    .sel-LOW{border-color:var(--low)!important;color:var(--low);}
+    .sel-INFO{border-color:var(--inf)!important;color:var(--inf);}
+
+    /* Btns */
+    .btn{padding:11px 22px;border-radius:10px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:.4px;transition:all .2s;display:inline-flex;align-items:center;gap:8px;}
+    .btn:active{transform:scale(.97);}
+    .btn-ic{width:31px;height:31px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-d);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;}
+    .btn-ic:hover{background:var(--bg3);color:var(--text);}
+    .btn-ic.del:hover{border-color:var(--crit);color:var(--crit);background:rgba(255,51,102,.08);}
+    .btn-add{background:rgba(0,255,136,.06);color:var(--green);border:1px dashed rgba(0,255,136,.25);width:100%;justify-content:center;padding:15px;border-radius:12px;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:'Syne',sans-serif;font-weight:700;transition:all .2s;}
+    .btn-add:hover{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.5);}
+
+    /* Action bar */
+    .abar{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:32px;padding:28px 24px;background:var(--card);border:1px solid var(--border);border-radius:18px;}
+    .abar .btn{min-width:180px;justify-content:center;padding:15px 28px;font-size:14px;}
+    .btn-doc{background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;box-shadow:0 4px 18px rgba(21,101,192,.3);}
+    .btn-doc:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(21,101,192,.45);}
+    .btn-pdf{background:linear-gradient(135deg,#b71c1c,#d32f2f);color:#fff;box-shadow:0 4px 18px rgba(183,28,28,.3);}
+    .btn-pdf:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(183,28,28,.45);}
+    .btn-clr{background:var(--bg3);color:var(--text-d);border:1px solid var(--border);}
+    .btn-clr:hover{border-color:var(--crit);color:var(--crit);}
+
+    /* Stats */
+    .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+    .sc{display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;font-size:11px;font-family:'Space Mono',monospace;font-weight:700;}
+    .sd{width:7px;height:7px;border-radius:50%;}
+    .sc-c{background:rgba(255,51,102,.1);color:var(--crit);} .sd-c{background:var(--crit);}
+    .sc-h{background:rgba(255,107,53,.1);color:var(--high);} .sd-h{background:var(--high);}
+    .sc-m{background:rgba(251,191,36,.1);color:var(--med);} .sd-m{background:var(--med);}
+    .sc-l{background:rgba(56,189,248,.1);color:var(--low);} .sd-l{background:var(--low);}
+    .sc-i{background:rgba(107,114,128,.1);color:var(--inf);} .sd-i{background:var(--inf);}
+
+    /* Toast */
+    #toast{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+    .tmsg{background:var(--card);border:1px solid var(--border-b);border-radius:10px;padding:11px 18px;font-size:13px;display:flex;align-items:center;gap:10px;animation:tin .3s ease;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+    @keyframes tin{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+    .tmsg.ok{border-color:rgba(0,255,136,.4);}.tmsg.ok .ti{color:var(--green);}
+    .tmsg.er{border-color:rgba(255,51,102,.4);}.tmsg.er .ti{color:var(--crit);}
+    .tmsg.in{border-color:rgba(0,229,255,.4);}.tmsg.in .ti{color:var(--accent);}
+
+    /* Misc */
+    ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-track{background:var(--bg);} ::-webkit-scrollbar-thumb{background:var(--border-b);border-radius:3px;}
+    @media(max-width:600px){.fgrid{grid-template-columns:1fr;}.abar .btn{min-width:100%;}}
+    .empty-state{text-align:center;padding:48px 20px;color:var(--text-d);font-family:'Space Mono',monospace;font-size:13px;}
+    .empty-icon{font-size:40px;margin-bottom:12px;opacity:.4;}
+    .divider{height:1px;background:var(--border);margin:20px 0;}
+    .loading{opacity:.6;pointer-events:none;}
+
+    /* ── LOGIN SCREEN ── */
+    #loginScreen{
+      position:fixed;inset:0;z-index:9999;
+      background:var(--bg);
+      display:flex;align-items:center;justify-content:center;
+      padding:20px;
+    }
+    #loginScreen::before{
+      content:'';position:absolute;inset:0;
+      background-image:linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);
+      background-size:48px 48px;pointer-events:none;
+    }
+    /* Animated corner accents */
+    #loginScreen::after{
+      content:'';position:absolute;
+      width:320px;height:320px;
+      top:-80px;right:-80px;
+      background:radial-gradient(circle,rgba(124,58,237,.15) 0%,transparent 70%);
+      border-radius:50%;pointer-events:none;
+    }
+    .login-glow{
+      position:absolute;
+      width:400px;height:400px;
+      bottom:-120px;left:-80px;
+      background:radial-gradient(circle,rgba(0,229,255,.08) 0%,transparent 70%);
+      border-radius:50%;pointer-events:none;
+    }
+    .login-box{
+      position:relative;z-index:1;
+      background:var(--card);
+      border:1px solid var(--border-b);
+      border-radius:24px;
+      padding:44px 40px 36px;
+      width:100%;max-width:460px;
+      box-shadow:0 24px 80px rgba(0,0,0,.6),0 0 0 1px rgba(0,229,255,.05);
+      animation:fadeUp .5s ease;
+    }
+    @keyframes fadeUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+    .login-box::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:3px;
+      background:linear-gradient(90deg,var(--accent2),var(--accent),var(--green));
+      border-radius:24px 24px 0 0;
+    }
+    .login-logo{text-align:center;margin-bottom:32px;}
+    .login-logo .shield{
+      width:72px;height:72px;margin:0 auto 16px;
+      background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(0,229,255,.2));
+      border:2px solid rgba(0,229,255,.3);
+      border-radius:20px;display:flex;align-items:center;justify-content:center;
+      font-size:32px;position:relative;overflow:hidden;
+    }
+    .login-logo .shield::after{
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(135deg,rgba(0,229,255,.05),transparent);
+    }
+    .login-logo h2{font-size:22px;font-weight:800;color:#fff;margin-bottom:6px;}
+    .login-logo p{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-d);letter-spacing:1px;}
+    .login-divider{
+      display:flex;align-items:center;gap:12px;margin-bottom:28px;
+    }
+    .login-divider span{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-d);letter-spacing:2px;text-transform:uppercase;white-space:nowrap;}
+    .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+    .lfg{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;}
+    .lfg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-d);font-family:'Space Mono',monospace;display:flex;align-items:center;gap:6px;}
+    .lfg label .req{color:var(--accent);font-size:12px;}
+    .linput-wrap{position:relative;}
+    .linput-wrap .icon{
+      position:absolute;left:14px;top:50%;transform:translateY(-50%);
+      font-size:15px;color:var(--text-d);pointer-events:none;
+    }
+    .lfg input{
+      background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+      padding:13px 16px 13px 44px;color:var(--text);
+      font-family:'Syne',sans-serif;font-size:15px;width:100%;
+      transition:all .2s;outline:none;
+    }
+    .lfg input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(0,229,255,.06);background:var(--bg3);}
+    .lfg input.error{border-color:var(--crit);box-shadow:0 0 0 4px rgba(255,51,102,.06);}
+    .lerr{font-size:11px;color:var(--crit);font-family:'Space Mono',monospace;min-height:16px;display:none;}
+    .lerr.show{display:block;}
+    .btn-login{
+      width:100%;padding:15px;border-radius:14px;border:none;cursor:pointer;
+      background:linear-gradient(135deg,var(--accent2),var(--accent));
+      color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;
+      letter-spacing:.5px;margin-top:8px;
+      box-shadow:0 4px 24px rgba(0,229,255,.2),0 2px 8px rgba(124,58,237,.3);
+      transition:all .25s;position:relative;overflow:hidden;
+    }
+    .btn-login::after{
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);
+      opacity:0;transition:opacity .2s;
+    }
+    .btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,229,255,.3),0 4px 16px rgba(124,58,237,.4);}
+    .btn-login:hover::after{opacity:1;}
+    .btn-login:active{transform:scale(.98);}
+    .login-note{text-align:center;margin-top:18px;font-family:'Space Mono',monospace;font-size:10px;color:var(--text-d);line-height:1.7;}
+
+    /* ── USER INFO BAR ── */
+    #userBar{
+      background:var(--card2);border:1px solid var(--border-b);border-radius:14px;
+      padding:14px 22px;margin-bottom:24px;
+      display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+      position:relative;overflow:hidden;
+    }
+    #userBar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(to bottom,var(--accent2),var(--accent));}
+    .ub-label{font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:2px;color:var(--text-d);}
+    .ub-val{font-size:14px;font-weight:700;color:#fff;}
+    .ub-item{display:flex;flex-direction:column;gap:3px;}
+    .ub-sep{width:1px;height:36px;background:var(--border);flex-shrink:0;}
+    .ub-right{margin-left:auto;}
+    .btn-logout{background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 14px;color:var(--text-d);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;letter-spacing:.5px;}
+    .btn-logout:hover{border-color:var(--crit);color:var(--crit);}
+    #mainApp{display:none;}
+  </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-glow"></div>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="shield">🛡️</div>
+      <h2>Security Report Generator</h2>
+      <p>// KIỂM THỬ BẢO MẬT — XÁC THỰC DANH TÍNH</p>
+    </div>
+    <div class="login-divider"><span>Thông tin nhóm</span></div>
+    <div class="lfg">
+      <label>Tên Trưởng Nhóm <span class="req">*</span></label>
+      <div class="linput-wrap"><span class="icon">✦</span><input id="li-name" type="text" placeholder="Nhập họ và tên đầy đủ" autocomplete="off"></div>
+      <span class="lerr" id="err-name">Vui lòng nhập tên trưởng nhóm!</span>
+    </div>
+    <div class="lfg">
+      <label>MSSV <span class="req">*</span></label>
+      <div class="linput-wrap"><span class="icon">◈</span><input id="li-mssv" type="text" placeholder="Nhập mã số sinh viên" autocomplete="off"></div>
+      <span class="lerr" id="err-mssv">Vui lòng nhập MSSV!</span>
+    </div>
+    <div class="lfg">
+      <label>Lớp <span class="req">*</span></label>
+      <div class="linput-wrap"><span class="icon">▣</span><input id="li-class" type="text" placeholder="Ví dụ: ATTT2021A, CNTT2022B" autocomplete="off"></div>
+      <span class="lerr" id="err-class">Vui lòng nhập lớp!</span>
+    </div>
+    <button class="btn-login" onclick="doLogin()">🚀 &nbsp; TRUY CẬP HỆ THỐNG</button>
+    <p class="login-note">Thông tin sẽ được in vào báo cáo xuất ra.<br>Không lưu trữ dữ liệu lên server.</p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp">
+<div class="wrap">
+  <div id="userBar">
+    <div class="ub-item"><span class="ub-label">Trưởng Nhóm</span><span class="ub-val" id="ub-name">—</span></div>
+    <div class="ub-sep"></div>
+    <div class="ub-item"><span class="ub-label">MSSV</span><span class="ub-val" id="ub-mssv">—</span></div>
+    <div class="ub-sep"></div>
+    <div class="ub-item"><span class="ub-label">Lớp</span><span class="ub-val" id="ub-class">—</span></div>
+    <div class="ub-right"><button class="btn-logout" onclick="doLogout()">⏏ Đổi thông tin</button></div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="badge"><span class="dot"></span> Security Report Generator</div>
+    <h1>Báo Cáo Kiểm Thử Bảo Mật</h1>
+    <p class="sub">// Nhập dữ liệu lỗ hổng → Xuất báo cáo DOCX & PDF chuyên nghiệp</p>
+  </header>
+
+  <!-- PROJECT INFO -->
+  <div class="card">
+    <div class="card-title"><div class="card-icon">📋</div> Thông Tin Dự Án</div>
+    <div class="fgrid">
+      <div class="fg">
+        <label>Tên Dự Án / Hệ Thống</label>
+        <input id="projName" type="text" placeholder="Ví dụ: Hệ thống Ngân hàng XYZ">
+      </div>
+      <div class="fg">
+        <label>Mục Tiêu / Target</label>
+        <input id="projTarget" type="text" placeholder="Ví dụ: 192.168.1.0/24, app.example.com">
+      </div>
+      <div class="fg">
+        <label>Đơn Vị Kiểm Thử</label>
+        <input id="projOrg" type="text" placeholder="Tên công ty / nhóm pentest">
+      </div>
+      <div class="fg">
+        <label>Kiểm Thử Viên</label>
+        <input id="projAuditor" type="text" placeholder="Họ và tên">
+      </div>
+      <div class="fg">
+        <label>Ngày Kiểm Thử</label>
+        <input id="projDate" type="date">
+      </div>
+      <div class="fg">
+        <label>Phiên Bản Báo Cáo</label>
+        <input id="projVer" type="text" placeholder="v1.0" value="v1.0">
+      </div>
+      <div class="fg full">
+        <label>Mô Tả Phạm Vi Kiểm Thử</label>
+        <textarea id="projScope" placeholder="Mô tả phạm vi, phương pháp kiểm thử, các hệ thống được kiểm tra..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- VULNERABILITIES -->
+  <div class="card">
+    <div class="card-title"><div class="card-icon">🔍</div> Danh Sách Lỗ Hổng Bảo Mật</div>
+    <div class="stats" id="statsBar"></div>
+    <div class="vlist" id="vulnList"></div>
+    <div id="emptyState" class="empty-state">
+      <div class="empty-icon">🛡️</div>
+      <div>Chưa có lỗ hổng nào. Nhấn nút bên dưới để thêm.</div>
+    </div>
+    <div class="divider"></div>
+    <button class="btn-add" onclick="addVuln()">
+      <span>＋</span> Thêm Lỗ Hổng Mới
+    </button>
+  </div>
+
+  <!-- ACTION BAR -->
+  <div class="abar">
+    <button class="btn btn-doc" onclick="genDocx()">
+      <span>📄</span> Xuất File DOCX
+    </button>
+    <button class="btn btn-pdf" onclick="genPdf()">
+      <span>📕</span> Xuất File PDF
+    </button>
+    <button class="btn btn-clr" onclick="clearAll()">
+      <span>🗑️</span> Xóa Tất Cả
+    </button>
+  </div>
+
+</div>
+</div><!-- /mainApp -->
+<div id="toast"></div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let vulns = [];
+let idcnt = 0;
+let userInfo = {name:'', mssv:'', cls:''};
+
+// ─── Login / Logout ───────────────────────────────────────────────────────────
+function doLogin(){
+  const name = document.getElementById('li-name').value.trim();
+  const mssv = document.getElementById('li-mssv').value.trim();
+  const cls  = document.getElementById('li-class').value.trim();
+  let ok = true;
+  function setErr(id,inp,show){
+    document.getElementById(id).classList.toggle('show',show);
+    document.getElementById(inp).classList.toggle('error',show);
+    if(show) ok=false;
+  }
+  setErr('err-name','li-name',!name);
+  setErr('err-mssv','li-mssv',!mssv);
+  setErr('err-class','li-class',!cls);
+  if(!ok) return;
+
+  userInfo = {name, mssv, cls};
+  document.getElementById('ub-name').textContent  = name;
+  document.getElementById('ub-mssv').textContent  = mssv;
+  document.getElementById('ub-class').textContent = cls;
+
+  // Animate out login, show main
+  const ls = document.getElementById('loginScreen');
+  ls.style.transition = 'opacity .4s ease, transform .4s ease';
+  ls.style.opacity = '0';
+  ls.style.transform = 'scale(1.03)';
+  setTimeout(()=>{
+    ls.style.display='none';
+    const ma = document.getElementById('mainApp');
+    ma.style.display='block';
+    ma.style.opacity='0';
+    ma.style.transition='opacity .4s ease';
+    setTimeout(()=>ma.style.opacity='1',20);
+  }, 400);
+  toast('Xin chào, ' + name + '! Chúc bạn làm báo cáo tốt.','ok');
+}
+
+function doLogout(){
+  document.getElementById('mainApp').style.display='none';
+  const ls = document.getElementById('loginScreen');
+  ls.style.display='flex';
+  ls.style.opacity='0';
+  ls.style.transform='scale(.97)';
+  ls.style.transition='opacity .35s ease,transform .35s ease';
+  setTimeout(()=>{ls.style.opacity='1';ls.style.transform='scale(1)';},20);
+}
+
+// Enter key on login inputs
+['li-name','li-mssv','li-class'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+});
+
+const SEV_ORDER = ['CRITICAL','HIGH','MEDIUM','LOW','INFO'];
+const SEV_VN = {CRITICAL:'Nghiêm trọng',HIGH:'Cao',MEDIUM:'Trung bình',LOW:'Thấp',INFO:'Thông tin'};
+const SEV_COLOR_HEX = {CRITICAL:'#ff3366',HIGH:'#ff6b35',MEDIUM:'#fbbf24',LOW:'#38bdf8',INFO:'#6b7280'};
+const SEV_DOCX_COLOR = {CRITICAL:'FF3366',HIGH:'FF6B35',MEDIUM:'FBBF24',LOW:'38BDF8',INFO:'6B7280'};
+const SEV_DOCX_BG = {CRITICAL:'2D0010',HIGH:'2D1200',MEDIUM:'2D2000',LOW:'001A2D',INFO:'151515'};
+
+// ─── Render helpers ───────────────────────────────────────────────────────────
+function updateStats(){
+  const bar = document.getElementById('statsBar');
+  const counts = {CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0,INFO:0};
+  vulns.forEach(v=>counts[v.severity]=(counts[v.severity]||0)+1);
+  const cls = {CRITICAL:'c',HIGH:'h',MEDIUM:'m',LOW:'l',INFO:'i'};
+  bar.innerHTML = SEV_ORDER.filter(s=>counts[s]>0).map(s=>`
+    <span class="sc sc-${cls[s]}"><span class="sd sd-${cls[s]}"></span>${SEV_VN[s]}: ${counts[s]}</span>
+  `).join('') + (vulns.length?`<span class="sc" style="background:rgba(255,255,255,.05);color:#aaa;">Tổng: ${vulns.length}</span>`:'');
+}
+
+function renderVulnList(){
+  const list = document.getElementById('vulnList');
+  const empty = document.getElementById('emptyState');
+  empty.style.display = vulns.length ? 'none' : 'block';
+  list.innerHTML = vulns.map((v,i)=>`
+    <div class="vcard ${v.open?'open':''}" id="vc-${v.id}">
+      <div class="vhdr" onclick="toggleVuln(${v.id})">
+        <span class="vnum">Finding #${i+1}</span>
+        <span class="vname">${esc(v.name||'(Chưa đặt tên)')}</span>
+        <span class="sbadge s-${v.severity}">${SEV_VN[v.severity]}</span>
+        <div style="display:flex;gap:6px;margin-left:8px;" onclick="event.stopPropagation()">
+          <button class="btn-ic del" title="Xóa" onclick="removeVuln(${v.id})">✕</button>
+        </div>
+        <span class="vcaret">▼</span>
+      </div>
+      <div class="vbody">
+        <div class="fgrid">
+          <div class="fg">
+            <label>Tên Lỗi (Vulnerability Name)</label>
+            <input type="text" value="${esc(v.name)}" oninput="updV(${v.id},'name',this.value)" placeholder="Ví dụ: SQL Injection in Login Form">
+          </div>
+          <div class="fg">
+            <label>Mức Độ (Severity)</label>
+            <select class="sel-sev sel-${v.severity}" onchange="updV(${v.id},'severity',this.value);this.className='sel-sev sel-'+this.value">
+              ${SEV_ORDER.map(s=>`<option value="${s}" ${v.severity===s?'selected':''}>${SEV_VN[s]} — ${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fg full">
+            <label>Vị Trí Lỗi (Location / Endpoint)</label>
+            <input type="text" value="${esc(v.location)}" oninput="updV(${v.id},'location',this.value)" placeholder="Ví dụ: POST /api/login, tham số: username">
+          </div>
+          <div class="fg full">
+            <label>Cách Khai Thác (Exploitation)</label>
+            <textarea oninput="updV(${v.id},'exploit',this.value)" placeholder="Mô tả chi tiết cách tấn công, payload, bước thực hiện...">${esc(v.exploit)}</textarea>
+          </div>
+          <div class="fg full">
+            <label>Khuyến Nghị (Recommendation)</label>
+            <textarea oninput="updV(${v.id},'recommend',this.value)" placeholder="Hướng dẫn khắc phục, biện pháp bảo vệ...">${esc(v.recommend)}</textarea>
+          </div>
+          <div class="fg full">
+            <label>Tham Chiếu (References)</label>
+            <textarea oninput="updV(${v.id},'refs',this.value)" style="min-height:65px" placeholder="CVE-XXXX-XXXX, OWASP Top 10, CWE-XXX, https://...">${esc(v.refs)}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  updateStats();
+}
+
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+function addVuln(){
+  idcnt++;
+  vulns.push({id:idcnt,name:'',location:'',exploit:'',severity:'HIGH',recommend:'',refs:'',open:true});
+  renderVulnList();
+  setTimeout(()=>{const el=document.getElementById('vc-'+idcnt);if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+}
+
+function removeVuln(id){
+  vulns=vulns.filter(v=>v.id!==id);
+  renderVulnList();
+}
+
+function toggleVuln(id){
+  const v=vulns.find(v=>v.id===id);
+  if(v)v.open=!v.open;
+  renderVulnList();
+}
+
+function updV(id,field,val){
+  const v=vulns.find(v=>v.id===id);
+  if(v){v[field]=val;updateStats();}
+  if(field==='name'||field==='severity'){
+    const card=document.getElementById('vc-'+id);
+    if(card){
+      const nm=card.querySelector('.vname');
+      const bd=card.querySelector('.sbadge');
+      const sl=card.querySelector('.sel-sev');
+      if(nm)nm.textContent=val||'(Chưa đặt tên)';
+      if(field==='severity'&&bd){bd.className='sbadge s-'+val;bd.textContent=SEV_VN[val];}
+    }
+  }
+}
+
+function clearAll(){
+  if(!confirm('Xóa tất cả dữ liệu?'))return;
+  vulns=[];idcnt=0;
+  ['projName','projTarget','projOrg','projAuditor','projDate','projVer','projScope'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='projVer'?'v1.0':'';});
+  renderVulnList();
+  toast('Đã xóa tất cả dữ liệu.','ok');
+}
+
+function getProj(){
+  return {
+    name:document.getElementById('projName').value||'Bao Cao Kiem Thu Bao Mat',
+    target:document.getElementById('projTarget').value||'—',
+    org:document.getElementById('projOrg').value||'—',
+    auditor:document.getElementById('projAuditor').value||'—',
+    date:document.getElementById('projDate').value||new Date().toISOString().slice(0,10),
+    ver:document.getElementById('projVer').value||'v1.0',
+    scope:document.getElementById('projScope').value||'—',
+    leaderName: userInfo.name||'—',
+    leaderMSSV: userInfo.mssv||'—',
+    leaderClass: userInfo.cls||'—',
+  };
+}
+
+function fmtDate(d){
+  if(!d)return'—';const p=d.split('-');return`${p[2]}/${p[1]}/${p[0]}`;
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg,type='ok'){
+  const icons={ok:'✅',er:'❌',in:'⏳'};
+  const t=document.getElementById('toast');
+  const el=document.createElement('div');
+  el.className=`tmsg ${type}`;
+  el.innerHTML=`<span class="ti">${icons[type]}</span><span>${msg}</span>`;
+  t.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(20px)';el.style.transition='all .3s';setTimeout(()=>el.remove(),300);},3500);
+}
+
+// ─── DOCX Generator ──────────────────────────────────────────────────────────
+async function genDocx(){
+  if(vulns.length===0){toast('Vui lòng thêm ít nhất một lỗ hổng!','er');return;}
+  toast('Đang tạo file DOCX...','in');
+  try{
+    const {
+      Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,
+      HeadingLevel,AlignmentType,WidthType,BorderStyle,ShadingType,
+      PageBreak,LevelFormat,UnderlineType,Header,Footer,PageNumber
+    } = docx;
+
+    const proj = getProj();
+    const counts = {CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0,INFO:0};
+    vulns.forEach(v=>counts[v.severity]=(counts[v.severity]||0)+1);
+
+    const def={style:BorderStyle.SINGLE,size:1,color:'2A3F70'};
+    const brd={top:def,bottom:def,left:def,right:def};
+    const defClr={style:BorderStyle.NONE,size:0,color:'FFFFFF'};
+    const nobrd={top:defClr,bottom:defClr,left:defClr,right:defClr};
+
+    function hdrCell(txt,w){
+      return new TableCell({
+        borders:brd,width:{size:w,type:WidthType.DXA},
+        shading:{fill:'1A2240',type:ShadingType.CLEAR},
+        margins:{top:100,bottom:100,left:120,right:120},
+        children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:txt,bold:true,color:'00E5FF',size:22,font:'Arial'})]})]
+      });
+    }
+    function dataCell(txt,w,clr){
+      return new TableCell({
+        borders:brd,width:{size:w,type:WidthType.DXA},
+        shading:{fill:'0C1020',type:ShadingType.CLEAR},
+        margins:{top:80,bottom:80,left:120,right:120},
+        children:[new Paragraph({children:[new TextRun({text:txt||'—',size:20,color:clr||'DDEEFF',font:'Arial'})]})]
+      });
+    }
+    function infoRow(label,val){
+      return new TableRow({children:[
+        new TableCell({borders:brd,width:{size:3000,type:WidthType.DXA},shading:{fill:'121830',type:ShadingType.CLEAR},margins:{top:80,bottom:80,left:140,right:140},
+          children:[new Paragraph({children:[new TextRun({text:label,bold:true,size:20,color:'00E5FF',font:'Arial'})]})]}),
+        new TableCell({borders:brd,width:{size:6360,type:WidthType.DXA},shading:{fill:'0C1020',type:ShadingType.CLEAR},margins:{top:80,bottom:80,left:140,right:140},
+          children:[new Paragraph({children:[new TextRun({text:val||'—',size:20,color:'DDEEFF',font:'Arial'})]})]})
+      ]});
+    }
+    function sevCell(sev,w){
+      const c=SEV_DOCX_COLOR[sev]||'6B7280';
+      const bg=SEV_DOCX_BG[sev]||'151515';
+      return new TableCell({
+        borders:brd,width:{size:w,type:WidthType.DXA},
+        shading:{fill:bg,type:ShadingType.CLEAR},
+        margins:{top:80,bottom:80,left:120,right:120},
+        children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:SEV_VN[sev]||sev,bold:true,size:20,color:c,font:'Arial'})]})]
+      });
+    }
+    function h2p(txt){
+      return new Paragraph({heading:HeadingLevel.HEADING_2,children:[new TextRun({text:txt,size:28,bold:true,color:'00E5FF',font:'Arial'})]});
+    }
+    function h3p(txt){
+      return new Paragraph({heading:HeadingLevel.HEADING_3,children:[new TextRun({text:txt,size:24,bold:true,color:'7C3AED',font:'Arial'})]});
+    }
+    function bodyP(txt){
+      return (txt||'').split('\n').map(line=>new Paragraph({children:[new TextRun({text:line||' ',size:20,color:'DDEEFF',font:'Arial'})],spacing:{after:80}}));
+    }
+    function sp(n=1){return Array(n).fill(new Paragraph({children:[new TextRun({text:' '})],spacing:{after:60}}));}
+
+    // Cover section
+    const coverChildren = [
+      new Paragraph({spacing:{before:800,after:200},children:[new TextRun({text:'BÁO CÁO KIỂM THỬ BẢO MẬT',bold:true,size:56,color:'00E5FF',font:'Arial'})],alignment:AlignmentType.CENTER}),
+      new Paragraph({spacing:{after:600},children:[new TextRun({text:'SECURITY ASSESSMENT REPORT',size:28,color:'7C3AED',font:'Arial'})],alignment:AlignmentType.CENTER}),
+      new Paragraph({spacing:{after:200},children:[],border:{bottom:{style:BorderStyle.SINGLE,size:2,color:'2A3F70'}}}),
+      ...sp(2),
+      new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[3000,6360],
+        rows:[
+          infoRow('Du An',proj.name),
+          infoRow('Muc Tieu',proj.target),
+          infoRow('Don Vi Kiem Thu',proj.org),
+          infoRow('Kiem Thu Vien',proj.auditor),
+          infoRow('Ngay Kiem Thu',fmtDate(proj.date)),
+          infoRow('Phien Ban',proj.ver),
+          infoRow('Truong Nhom',proj.leaderName),
+          infoRow('MSSV Truong Nhom',proj.leaderMSSV),
+          infoRow('Lop',proj.leaderClass),
+        ]
+      }),
+      ...sp(2),
+      new Paragraph({children:[new TextRun({text:'⚠  TÀI LIỆU BẢO MẬT — KHÔNG PHÂN PHỐI',bold:true,size:18,color:'FF3366',font:'Arial'})],alignment:AlignmentType.CENTER}),
+      new Paragraph({children:[new PageBreak()]}),
+    ];
+
+    // Summary section
+    const summaryChildren = [
+      new Paragraph({heading:HeadingLevel.HEADING_1,spacing:{after:200},children:[new TextRun({text:'1. TONG QUAN',bold:true,size:36,color:'FFFFFF',font:'Arial'})]}),
+      ...bodyP(`Bao cao nay ghi nhan ket qua kiem thu bao mat ${proj.name}, thuc hien boi ${proj.auditor} (${proj.org}) ngay ${fmtDate(proj.date)}. Truong nhom: ${proj.leaderName} — MSSV: ${proj.leaderMSSV} — Lop: ${proj.leaderClass}.\n`),
+      h3p('Pham Vi Kiem Thu'),
+      ...bodyP(proj.scope),
+      ...sp(),
+      h3p('Thống Kê Lỗ Hổng'),
+      new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[3120,3120,3120],
+        rows:[
+          new TableRow({children:[hdrCell('Mức Độ',3120),hdrCell('Số Lượng',3120),hdrCell('Tỷ Lệ',3120)]}),
+          ...SEV_ORDER.filter(s=>counts[s]>0).map(s=>new TableRow({children:[
+            sevCell(s,3120),
+            dataCell(String(counts[s]),3120,SEV_DOCX_COLOR[s]),
+            dataCell(((counts[s]/vulns.length)*100).toFixed(1)+'%',3120,'AABBCC'),
+          ]})),
+          new TableRow({children:[
+            hdrCell('TỔNG CỘNG',3120),
+            new TableCell({borders:brd,width:{size:3120,type:WidthType.DXA},shading:{fill:'1A2240',type:ShadingType.CLEAR},margins:{top:80,bottom:80,left:120,right:120},
+              children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:String(vulns.length),bold:true,size:22,color:'FFFFFF',font:'Arial'})]})]}),
+            dataCell('100%',3120,'AABBCC'),
+          ]})
+        ]
+      }),
+      ...sp(),
+      new Paragraph({children:[new PageBreak()]}),
+    ];
+
+    // Overview table section
+    const overviewRows = [
+      new TableRow({children:[
+        hdrCell('#',800),hdrCell('Tên Lỗi',3000),hdrCell('Vị Trí',3000),hdrCell('Mức Độ',1600),hdrCell('Điểm CVSS',1960)
+      ]})
+    ];
+    vulns.forEach((v,i)=>{
+      overviewRows.push(new TableRow({children:[
+        dataCell(String(i+1),800,'AABBCC'),
+        dataCell(v.name||'—',3000,'DDEEFF'),
+        dataCell(v.location||'—',3000,'AABBCC'),
+        sevCell(v.severity,1600),
+        dataCell({CRITICAL:'9.0–10.0',HIGH:'7.0–8.9',MEDIUM:'4.0–6.9',LOW:'1.0–3.9',INFO:'N/A'}[v.severity],1960,'AABBCC'),
+      ]}));
+    });
+
+    const ovTableSection = [
+      new Paragraph({heading:HeadingLevel.HEADING_1,spacing:{after:200},children:[new TextRun({text:'2. DANH SÁCH LỖ HỔNG',bold:true,size:36,color:'FFFFFF',font:'Arial'})]}),
+      new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[800,3000,3000,1600,1960],rows:overviewRows}),
+      ...sp(),
+      new Paragraph({children:[new PageBreak()]}),
+    ];
+
+    // Detailed findings
+    const detailsChildren = [
+      new Paragraph({heading:HeadingLevel.HEADING_1,spacing:{after:300},children:[new TextRun({text:'3. CHI TIẾT LỖ HỔNG',bold:true,size:36,color:'FFFFFF',font:'Arial'})]}),
+    ];
+    vulns.forEach((v,i)=>{
+      detailsChildren.push(
+        h2p(`${i+1}. ${v.name||'Lỗ hổng '+(i+1)}`),
+        ...sp(),
+        new Table({width:{size:9360,type:WidthType.DXA},columnWidths:[2400,6960],rows:[
+          new TableRow({children:[
+            new TableCell({borders:brd,width:{size:2400,type:WidthType.DXA},shading:{fill:'1A2240',type:ShadingType.CLEAR},margins:{top:80,bottom:80,left:120,right:120},
+              children:[new Paragraph({children:[new TextRun({text:'Mức Độ',bold:true,size:20,color:'00E5FF',font:'Arial'})]})]}),
+            sevCell(v.severity,6960),
+          ]}),
+          new TableRow({children:[
+            new TableCell({borders:brd,width:{size:2400,type:WidthType.DXA},shading:{fill:'1A2240',type:ShadingType.CLEAR},margins:{top:80,bottom:80,left:120,right:120},
+              children:[new Paragraph({children:[new TextRun({text:'Vị Trí Lỗi',bold:true,size:20,color:'00E5FF',font:'Arial'})]})]}),
+            dataCell(v.location||'—',6960,'DDEEFF'),
+          ]}),
+        ]}),
+        ...sp(),
+        h3p('Cách Khai Thác'),
+        ...bodyP(v.exploit||'—'),
+        ...sp(),
+        h3p('Khuyến Nghị'),
+        ...bodyP(v.recommend||'—'),
+        ...sp(),
+        h3p('Tham Chiếu'),
+        ...bodyP(v.refs||'—'),
+        ...sp(),
+        new Paragraph({children:[],border:{bottom:{style:BorderStyle.SINGLE,size:1,color:'2A3F70'}}}),
+        ...sp(2),
+      );
+      if(i<vulns.length-1) detailsChildren.push(new Paragraph({children:[new PageBreak()]}));
+    });
+
+    const doc = new Document({
+      styles:{
+        default:{document:{run:{font:'Arial',size:20}}},
+        paragraphStyles:[
+          {id:'Heading1',name:'Heading 1',basedOn:'Normal',next:'Normal',quickFormat:true,
+            run:{size:36,bold:true,font:'Arial',color:'FFFFFF'},
+            paragraph:{spacing:{before:400,after:200},outlineLevel:0}},
+          {id:'Heading2',name:'Heading 2',basedOn:'Normal',next:'Normal',quickFormat:true,
+            run:{size:28,bold:true,font:'Arial',color:'00E5FF'},
+            paragraph:{spacing:{before:300,after:160},outlineLevel:1}},
+          {id:'Heading3',name:'Heading 3',basedOn:'Normal',next:'Normal',quickFormat:true,
+            run:{size:24,bold:true,font:'Arial',color:'7C3AED'},
+            paragraph:{spacing:{before:240,after:120},outlineLevel:2}},
+        ]
+      },
+      sections:[{
+        properties:{page:{size:{width:11906,height:16838},margin:{top:1134,right:1134,bottom:1134,left:1134},color:{pageColor:'070B16'}}},
+        children:[...coverChildren,...summaryChildren,...ovTableSection,...detailsChildren]
+      }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url;a.download=`Security_Report_${proj.name.replace(/\s+/g,'_')}_${proj.date||'report'}.docx`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Đã xuất file DOCX thành công!','ok');
+  }catch(e){
+    console.error(e);
+    toast('Lỗi tạo DOCX: '+e.message,'er');
+  }
+}
+
+// ─── PDF Generator ────────────────────────────────────────────────────────────
+async function genPdf(){
+  if(vulns.length===0){toast('Vui lòng thêm ít nhất một lỗ hổng!','er');return;}
+  toast('Đang tạo file PDF...','in');
+  try{
+    const {jsPDF} = window.jspdf;
+    const proj = getProj();
+    const counts = {CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0,INFO:0};
+    vulns.forEach(v=>counts[v.severity]=(counts[v.severity]||0)+1);
+    const doc = new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+    const W=595, H=842, ML=48, MR=48, CW=W-ML-MR;
+
+    // Palette
+    const C = {
+      bg:[7,11,22], bg2:[12,16,32], bg3:[17,24,39], card:[20,27,48],
+      border:[30,45,80], accent:[0,229,255], accent2:[124,58,237],
+      green:[0,255,136], text:[221,232,255], textd:[106,123,168],
+      crit:[255,51,102], high:[255,107,53], med:[251,191,36], low:[56,189,248], inf:[107,114,128],
+    };
+    const SEVC = {CRITICAL:C.crit,HIGH:C.high,MEDIUM:C.med,LOW:C.low,INFO:C.inf};
+    const SEVBG = {CRITICAL:[45,0,16],HIGH:[45,18,0],MEDIUM:[45,32,0],LOW:[0,26,45],INFO:[21,21,21]};
+
+    function setFont(size,bold,color){
+      doc.setFontSize(size);
+      doc.setFont('helvetica', bold?'bold':'normal');
+      doc.setTextColor(...(color||C.text));
+    }
+    function fillRect(x,y,w,h,color){doc.setFillColor(...color);doc.rect(x,y,w,h,'F');}
+    function strokeRect(x,y,w,h,color,lw=0.5){doc.setDrawColor(...color);doc.setLineWidth(lw);doc.rect(x,y,w,h,'S');}
+    function multiText(text,x,y,maxW,lineH,color,size,bold){
+      setFont(size||9,bold||false,color);
+      const lines = doc.splitTextToSize(String(text||'—'),maxW);
+      doc.text(lines,x,y);
+      return lines.length * lineH;
+    }
+
+    let pageNum = 1;
+    function addFooter(){
+      fillRect(0,H-28,W,28,C.bg2);
+      doc.setDrawColor(...C.border);doc.setLineWidth(0.5);doc.line(0,H-28,W,H-28);
+      setFont(7,false,C.textd);
+      doc.text(proj.name,ML,H-10);
+      doc.text(`Trang ${pageNum}`,W/2,H-10,{align:'center'});
+      doc.text(`${proj.leaderName} | ${proj.leaderMSSV} | ${proj.leaderClass}`,W-ML,H-10,{align:'right'});
+      pageNum++;
+    }
+    function newPage(){addFooter();doc.addPage();}
+
+    // ── COVER PAGE ──
+    fillRect(0,0,W,H,C.bg);
+    // Grid pattern (simplified)
+    doc.setDrawColor(0,229,255,0.05);
+    for(let i=0;i<W;i+=40){doc.setDrawColor(...[0,229,255]);doc.setLineWidth(0.1);doc.setGState(doc.GState({opacity:0.04}));doc.line(i,0,i,H);}
+    for(let j=0;j<H;j+=40){doc.line(0,j,W,j);}
+    doc.setGState(doc.GState({opacity:1}));
+
+    // Accent bar top
+    doc.setFillColor(...C.accent2);doc.rect(0,0,W,4,'F');
+    doc.setFillColor(...C.accent);doc.rect(W/2,0,W/2,4,'F');
+
+    // Badge
+    fillRect(ML,60,120,20,[20,30,60]);
+    doc.setDrawColor(0,229,255);doc.setLineWidth(0.5);doc.rect(ML,60,120,20,'S');
+    setFont(7,true,C.accent);doc.text('SECURITY REPORT',ML+10,72.5);
+
+    // Main title
+    setFont(26,true,C.text);doc.text('BÁO CÁO KIỂM THỬ',ML,132);
+    setFont(26,true,C.accent);doc.text('BẢO MẬT',ML,162);
+    setFont(11,false,[124,58,237]);doc.text('SECURITY ASSESSMENT REPORT',ML,184);
+
+    // Divider
+    doc.setDrawColor(...C.border);doc.setLineWidth(1);doc.line(ML,200,W-MR,200);
+
+    // Info table on cover
+    const infoY = 226;
+    const rows = [
+      ['Du An / Project',proj.name],
+      ['Muc Tieu / Target',proj.target],
+      ['Don Vi Kiem Thu',proj.org],
+      ['Kiem Thu Vien',proj.auditor],
+      ['Ngay Kiem Thu',fmtDate(proj.date)],
+      ['Phien Ban',proj.ver],
+      ['Truong Nhom',proj.leaderName],
+      ['MSSV Truong Nhom',proj.leaderMSSV],
+      ['Lop',proj.leaderClass],
+    ];
+    let ry=infoY;
+    rows.forEach(([l,v],i)=>{
+      fillRect(ML,ry,180,26,i%2===0?[18,26,48]:[14,20,38]);
+      fillRect(ML+180,ry,CW-180,26,i%2===0?[12,16,32]:[10,14,28]);
+      doc.setDrawColor(...C.border);doc.setLineWidth(0.3);doc.rect(ML,ry,CW,26,'S');
+      setFont(8,true,C.accent);doc.text(l,ML+8,ry+16.5);
+      setFont(9,false,C.text);doc.text(v||'—',ML+188,ry+16.5);
+      ry+=26;
+    });
+
+    // Severity summary mini table
+    const sumY = ry+24;
+    setFont(10,true,C.text);doc.text('Tóm Tắt Lỗ Hổng',ML,sumY);
+    let sx=ML, sy=sumY+10;
+    const colW=(CW)/SEV_ORDER.filter(s=>counts[s]>0).length;
+    SEV_ORDER.filter(s=>counts[s]>0).forEach(s=>{
+      fillRect(sx,sy,colW-4,50,SEVBG[s]);
+      doc.setDrawColor(...SEVC[s]);doc.setLineWidth(0.5);doc.rect(sx,sy,colW-4,50,'S');
+      setFont(18,true,SEVC[s]);doc.text(String(counts[s]),sx+(colW-4)/2,sy+28,{align:'center'});
+      setFont(7,true,SEVC[s]);doc.text(SEV_VN[s].toUpperCase(),sx+(colW-4)/2,sy+42,{align:'center'});
+      sx+=colW;
+    });
+
+    // Confidential notice
+    fillRect(ML,H-120,CW,36,[45,0,20]);
+    doc.setDrawColor(...C.crit);doc.setLineWidth(0.7);doc.rect(ML,H-120,CW,36,'S');
+    setFont(9,true,C.crit);doc.text('⚠ TÀI LIỆU BẢO MẬT — KHÔNG PHÂN PHỐI',W/2,H-98,{align:'center'});
+
+    addFooter();
+
+    // ── OVERVIEW TABLE PAGE ──
+    doc.addPage();
+    fillRect(0,0,W,H,C.bg);
+
+    let y=60;
+    // Section header
+    fillRect(ML,y,4,24,C.accent);
+    setFont(14,true,C.text);doc.text('2. DANH SÁCH LỖ HỔNG',ML+12,y+17);
+    y+=44;
+
+    const ovCols=[{h:'#',w:28},{h:'Tên Lỗi',w:200},{h:'Vị Trí',w:170},{h:'Mức Độ',w:80},{h:'CVSS',w:CW-28-200-170-80}];
+    // Header row
+    let hx=ML;
+    ovCols.forEach(col=>{
+      fillRect(hx,y,col.w,22,C.card);
+      setFont(8,true,C.accent);doc.text(col.h,hx+4,y+14.5);
+      doc.setDrawColor(...C.border);doc.setLineWidth(0.3);doc.rect(hx,y,col.w,22,'S');
+      hx+=col.w;
+    });
+    y+=22;
+
+    vulns.forEach((v,i)=>{
+      if(y>H-80){newPage();fillRect(0,0,W,H,C.bg);y=60;}
+      const bg=i%2===0?C.bg2:[14,18,30];
+      fillRect(ML,y,CW,20,bg);
+      let cx=ML;
+      const cells=[String(i+1),v.name||'—',v.location||'—',SEV_VN[v.severity],{CRITICAL:'9.0–10',HIGH:'7.0–8.9',MEDIUM:'4.0–6.9',LOW:'1.0–3.9',INFO:'N/A'}[v.severity]];
+      cells.forEach((cell,ci)=>{
+        const col=ovCols[ci];
+        if(ci===3){
+          fillRect(cx+2,y+2,col.w-4,16,SEVBG[v.severity]);
+          setFont(7,true,SEVC[v.severity]);doc.text(String(cell),cx+col.w/2,y+12.5,{align:'center'});
+        } else {
+          setFont(8,ci===0,ci===0?C.textd:C.text);
+          doc.text(doc.splitTextToSize(String(cell),col.w-8)[0],cx+4,y+12.5);
+        }
+        doc.setDrawColor(...C.border);doc.setLineWidth(0.25);doc.rect(cx,y,col.w,20,'S');
+        cx+=col.w;
+      });
+      y+=20;
+    });
+
+    // ── DETAIL PAGES ──
+    vulns.forEach((v,i)=>{
+      newPage();
+      fillRect(0,0,W,H,C.bg);
+      let dy=60;
+
+      // Finding header
+      fillRect(ML,dy,CW,52,[12,18,36]);
+      doc.setDrawColor(...SEVC[v.severity]);doc.setLineWidth(1);doc.rect(ML,dy,CW,52,'S');
+      fillRect(ML,dy,3,52,SEVC[v.severity]);
+      setFont(7,true,C.textd);doc.text(`FINDING #${i+1}`,ML+12,dy+14);
+      setFont(12,true,C.text);doc.text(v.name||'Lỗ hổng '+(i+1),ML+12,dy+32);
+      // Severity badge in header
+      const bw=80;
+      fillRect(W-MR-bw,dy+10,bw,32,SEVBG[v.severity]);
+      doc.setDrawColor(...SEVC[v.severity]);doc.setLineWidth(0.5);doc.rect(W-MR-bw,dy+10,bw,32,'S');
+      setFont(8,true,SEVC[v.severity]);doc.text(SEV_VN[v.severity].toUpperCase(),(W-MR-bw)+bw/2,dy+29,{align:'center'});
+      dy+=68;
+
+      // Info row
+      function infoBlock(label,value,x,yw,bWidth){
+        fillRect(x,yw,bWidth,20,[18,26,48]);
+        setFont(7,true,C.accent);doc.text(label,x+6,yw+13.5);
+        doc.setDrawColor(...C.border);doc.setLineWidth(0.3);doc.rect(x,yw,bWidth,20,'S');
+        fillRect(x,yw+20,bWidth,18,C.bg2);
+        setFont(8,false,C.text);
+        const line=doc.splitTextToSize(value||'—',bWidth-12)[0];
+        doc.text(line,x+6,yw+32.5);
+        doc.setDrawColor(...C.border);doc.rect(x,yw+20,bWidth,18,'S');
+      }
+      infoBlock('VỊ TRÍ LỖI',v.location,ML,dy,CW/2-4);
+      infoBlock('CVSS SCORE',{CRITICAL:'9.0 – 10.0',HIGH:'7.0 – 8.9',MEDIUM:'4.0 – 6.9',LOW:'1.0 – 3.9',INFO:'N/A'}[v.severity],ML+CW/2+4,dy,CW/2-4);
+      dy+=52;
+
+      function section(title,content,accentClr){
+        dy+=14;
+        if(dy>H-100){newPage();fillRect(0,0,W,H,C.bg);dy=60;}
+        fillRect(ML,dy,3,16,accentClr);
+        setFont(10,true,C.text);doc.text(title,ML+10,dy+12);
+        dy+=24;
+        fillRect(ML,dy,CW,1,C.border);
+        dy+=8;
+        if(!content||content==='—'){
+          setFont(9,false,C.textd);doc.text('Không có thông tin',ML,dy+10);
+          dy+=22;return;
+        }
+        const lines=doc.splitTextToSize(content,CW);
+        const blockH=lines.length*12+16;
+        if(dy+blockH>H-80){newPage();fillRect(0,0,W,H,C.bg);dy=60;}
+        fillRect(ML,dy,CW,blockH,C.bg2);
+        doc.setDrawColor(...C.border);doc.setLineWidth(0.3);doc.rect(ML,dy,CW,blockH,'S');
+        fillRect(ML,dy,2,blockH,accentClr);
+        setFont(9,false,C.text);
+        doc.text(lines,ML+10,dy+12);
+        dy+=blockH;
+      }
+      section('CÁCH KHAI THÁC',v.exploit,C.crit);
+      section('KHUYẾN NGHỊ',v.recommend,C.green);
+      section('THAM CHIẾU',v.refs,C.accent2);
+    });
+
+    addFooter();
+
+    doc.save(`Security_Report_${proj.name.replace(/\s+/g,'_')}_${proj.date||'report'}.pdf`);
+    toast('Đã xuất file PDF thành công!','ok');
+  }catch(e){
+    console.error(e);
+    toast('Lỗi tạo PDF: '+e.message,'er');
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.getElementById('projDate').value = new Date().toISOString().slice(0,10);
+renderVulnList();
+</script>
+</body>
+</html>
