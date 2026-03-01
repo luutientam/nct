@@ -27,7 +27,7 @@ async function genDocx() {
     const brd = { top: def, bottom: def, left: def, right: def };
     const defClr = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
 
-    const FONT = 'Times New Roman';
+    const FONT = 'Arial';
     function hdrCell(txt, w) {
       return new TableCell({
         borders: brd, width: { size: w, type: WidthType.DXA },
