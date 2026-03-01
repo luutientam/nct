@@ -23,64 +23,71 @@ async function genDocx() {
     const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0 };
     vulns.forEach(v => { counts[v.severity] = (counts[v.severity] || 0) + 1; });
 
-    const def = { style: BorderStyle.SINGLE, size: 1, color: '2A3F70' };
+    const def = { style: BorderStyle.SINGLE, size: 1, color: '334155' };
     const brd = { top: def, bottom: def, left: def, right: def };
-    const defClr = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
 
     const FONT = 'Arial';
+    const CLR_ACCENT = '22D3EE';
+    const CLR_ACCENT2 = 'A78BFA';
+    const CLR_BODY = 'E2E8F0';
+    const CLR_SEC = '94A3B8';
+    const BG_HEADER = '1E293B';
+    const BG_CELL = '0F172A';
+    const BG_LABEL = '1E293B';
+
     function hdrCell(txt, w) {
       return new TableCell({
         borders: brd, width: { size: w, type: WidthType.DXA },
-        shading: { fill: '1A2240', type: ShadingType.CLEAR },
-        margins: { top: 120, bottom: 120, left: 140, right: 140 },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: txt, bold: true, color: '00E5FF', size: 22, font: FONT })] })]
+        shading: { fill: BG_HEADER, type: ShadingType.CLEAR },
+        margins: { top: 140, bottom: 140, left: 160, right: 160 },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: txt, bold: true, color: CLR_ACCENT, size: 22, font: FONT })] })]
       });
     }
     function dataCell(txt, w, clr) {
       return new TableCell({
         borders: brd, width: { size: w, type: WidthType.DXA },
-        shading: { fill: '0C1020', type: ShadingType.CLEAR },
-        margins: { top: 100, bottom: 100, left: 140, right: 140 },
-        children: [new Paragraph({ children: [new TextRun({ text: String(txt || '—').trim(), size: 21, color: clr || 'DDEEFF', font: FONT })], spacing: { line: 360 } })]
+        shading: { fill: BG_CELL, type: ShadingType.CLEAR },
+        margins: { top: 120, bottom: 120, left: 160, right: 160 },
+        children: [new Paragraph({ children: [new TextRun({ text: String(txt || '—').trim(), size: 21, color: clr || CLR_BODY, font: FONT })], spacing: { line: 380 } })]
       });
     }
     function infoRow(label, val) {
       return new TableRow({
         children: [
-          new TableCell({ borders: brd, width: { size: 3000, type: WidthType.DXA }, shading: { fill: '121830', type: ShadingType.CLEAR }, margins: { top: 100, bottom: 100, left: 160, right: 160 },
-            children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 21, color: '00E5FF', font: FONT })] })] }),
-          new TableCell({ borders: brd, width: { size: 6360, type: WidthType.DXA }, shading: { fill: '0C1020', type: ShadingType.CLEAR }, margins: { top: 100, bottom: 100, left: 160, right: 160 },
-            children: [new Paragraph({ children: [new TextRun({ text: String(val || '—').trim(), size: 21, color: 'DDEEFF', font: FONT })], spacing: { line: 360 } })] })
+          new TableCell({ borders: brd, width: { size: 3000, type: WidthType.DXA }, shading: { fill: BG_LABEL, type: ShadingType.CLEAR }, margins: { top: 120, bottom: 120, left: 180, right: 180 },
+            children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 21, color: CLR_ACCENT, font: FONT })] })] }),
+          new TableCell({ borders: brd, width: { size: 6360, type: WidthType.DXA }, shading: { fill: BG_CELL, type: ShadingType.CLEAR }, margins: { top: 120, bottom: 120, left: 180, right: 180 },
+            children: [new Paragraph({ children: [new TextRun({ text: String(val || '—').trim(), size: 21, color: CLR_BODY, font: FONT })], spacing: { line: 380 } })] })
         ]
       });
     }
     function sevCell(sev, w) {
-      const c = SEV_DOCX_COLOR[sev] || '6B7280';
-      const bg = SEV_DOCX_BG[sev] || '151515';
+      const c = SEV_DOCX_COLOR[sev] || CLR_SEC;
+      const bg = SEV_DOCX_BG[sev] || '1E293B';
       return new TableCell({
         borders: brd, width: { size: w, type: WidthType.DXA },
         shading: { fill: bg, type: ShadingType.CLEAR },
-        margins: { top: 100, bottom: 100, left: 120, right: 120 },
+        margins: { top: 120, bottom: 120, left: 140, right: 140 },
         children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: SEV_VN[sev] || sev, bold: true, size: 21, color: c, font: FONT })] })]
       });
     }
     function h2p(txt) {
-      return new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: txt, size: 26, bold: true, color: '00E5FF', font: FONT })], spacing: { before: 320, after: 180, line: 360 } });
+      return new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: txt, size: 26, bold: true, color: CLR_ACCENT, font: FONT })], spacing: { before: 320, after: 180, line: 380 } });
     }
     function h3p(txt) {
-      return new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun({ text: txt, size: 24, bold: true, color: '7C3AED', font: FONT })], spacing: { before: 260, after: 140, line: 320 } });
+      return new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun({ text: txt, size: 24, bold: true, color: CLR_ACCENT2, font: FONT })], spacing: { before: 260, after: 140, line: 340 } });
     }
     function bodyP(txt) {
       const s = String(txt || '').trim();
       if (!s) return [new Paragraph({ children: [new TextRun({ text: ' ', font: FONT })], spacing: { after: 100 } })];
-      return s.split(/\r?\n/).map(line => new Paragraph({ children: [new TextRun({ text: line || ' ', size: 21, color: 'DDEEFF', font: FONT })], spacing: { after: 100, line: 360 } }));
+      return s.split(/\r?\n/).map(line => new Paragraph({ children: [new TextRun({ text: line || ' ', size: 21, color: CLR_BODY, font: FONT })], spacing: { after: 100, line: 380 } }));
     }
     function sp(n = 1) { return Array(n).fill(new Paragraph({ children: [new TextRun({ text: ' ', font: FONT })], spacing: { after: 80 } })); }
 
     const coverChildren = [
-      new Paragraph({ spacing: { before: 900, after: 240 }, children: [new TextRun({ text: 'BÁO CÁO KIỂM THỬ BẢO MẬT', bold: true, size: 52, color: '00E5FF', font: FONT })], alignment: AlignmentType.CENTER }),
-      new Paragraph({ spacing: { after: 520 }, children: [new TextRun({ text: 'SECURITY ASSESSMENT REPORT', size: 26, color: '7C3AED', font: FONT })], alignment: AlignmentType.CENTER }),
-      new Paragraph({ spacing: { after: 240 }, children: [], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: '2A3F70' } } }),
+      new Paragraph({ spacing: { before: 900, after: 240 }, children: [new TextRun({ text: 'BÁO CÁO KIỂM THỬ BẢO MẬT', bold: true, size: 52, color: CLR_ACCENT, font: FONT })], alignment: AlignmentType.CENTER }),
+      new Paragraph({ spacing: { after: 520 }, children: [new TextRun({ text: 'SECURITY ASSESSMENT REPORT', size: 26, color: CLR_ACCENT2, font: FONT })], alignment: AlignmentType.CENTER }),
+      new Paragraph({ spacing: { after: 240 }, children: [], border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: '334155' } } }),
       ...sp(2),
       new Table({
         width: { size: 9360, type: WidthType.DXA }, columnWidths: [3000, 6360],
@@ -97,12 +104,12 @@ async function genDocx() {
         ]
       }),
       ...sp(2),
-      new Paragraph({ children: [new TextRun({ text: '⚠  TÀI LIỆU BẢO MẬT — KHÔNG PHÂN PHỐI', bold: true, size: 18, color: 'FF3366', font: FONT })], alignment: AlignmentType.CENTER }),
+      new Paragraph({ children: [new TextRun({ text: '⚠  TÀI LIỆU BẢO MẬT — KHÔNG PHÂN PHỐI', bold: true, size: 18, color: SEV_DOCX_COLOR.CRITICAL, font: FONT })], alignment: AlignmentType.CENTER }),
       new Paragraph({ children: [new PageBreak()] }),
     ];
 
     const summaryChildren = [
-      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 0, after: 240 }, children: [new TextRun({ text: '1. TỔNG QUAN', bold: true, size: 32, color: 'FFFFFF', font: FONT })], spacing: { line: 400 } }),
+      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 0, after: 240 }, children: [new TextRun({ text: '1. TỔNG QUAN', bold: true, size: 32, color: 'F8FAFC', font: FONT })], spacing: { line: 400 } }),
       ...bodyP(`Báo cáo này ghi nhận kết quả kiểm thử bảo mật ${proj.name}, thực hiện bởi ${proj.auditor} (${proj.org}) ngày ${fmtDate(proj.date)}. Trưởng nhóm: ${proj.leaderName} — MSSV: ${proj.leaderMSSV} — Lớp: ${proj.leaderClass}.`),
       h3p('Phạm vi kiểm thử'),
       ...bodyP(proj.scope),
@@ -116,17 +123,17 @@ async function genDocx() {
             children: [
               sevCell(s, 3120),
               dataCell(String(counts[s]), 3120, SEV_DOCX_COLOR[s]),
-              dataCell(((counts[s] / vulns.length) * 100).toFixed(1) + '%', 3120, 'AABBCC'),
+              dataCell(((counts[s] / vulns.length) * 100).toFixed(1) + '%', 3120, CLR_SEC),
             ]
           })),
           new TableRow({
             children: [
               hdrCell('TỔNG CỘNG', 3120),
                 new TableCell({
-                borders: brd, width: { size: 3120, type: WidthType.DXA }, shading: { fill: '1A2240', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
-                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(vulns.length), bold: true, size: 22, color: 'FFFFFF', font: FONT })] })]
+                borders: brd, width: { size: 3120, type: WidthType.DXA }, shading: { fill: BG_HEADER, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(vulns.length), bold: true, size: 22, color: 'F8FAFC', font: FONT })] })]
               }),
-              dataCell('100%', 3120, 'AABBCC'),
+              dataCell('100%', 3120, CLR_SEC),
             ]
           })
         ]
@@ -145,24 +152,24 @@ async function genDocx() {
     vulns.forEach((v, i) => {
       overviewRows.push(new TableRow({
         children: [
-          dataCell(String(i + 1), 800, 'AABBCC'),
-          dataCell(v.name || '—', 3000, 'DDEEFF'),
-          dataCell(v.location || '—', 3000, 'AABBCC'),
+          dataCell(String(i + 1), 800, CLR_SEC),
+          dataCell(v.name || '—', 3000, CLR_BODY),
+          dataCell(v.location || '—', 3000, CLR_SEC),
           sevCell(v.severity, 1600),
-          dataCell({ CRITICAL: '9.0–10.0', HIGH: '7.0–8.9', MEDIUM: '4.0–6.9', LOW: '1.0–3.9', INFO: 'N/A' }[v.severity], 1960, 'AABBCC'),
+          dataCell({ CRITICAL: '9.0–10.0', HIGH: '7.0–8.9', MEDIUM: '4.0–6.9', LOW: '1.0–3.9', INFO: 'N/A' }[v.severity], 1960, CLR_SEC),
         ]
       }));
     });
 
     const ovTableSection = [
-      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 200 }, children: [new TextRun({ text: '2. DANH SÁCH LỖ HỔNG', bold: true, size: 32, color: 'FFFFFF', font: FONT })] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 200 }, children: [new TextRun({ text: '2. DANH SÁCH LỖ HỔNG', bold: true, size: 32, color: 'F8FAFC', font: FONT })] }),
       new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [800, 3000, 3000, 1600, 1960], rows: overviewRows }),
       ...sp(),
       new Paragraph({ children: [new PageBreak()] }),
     ];
 
     const detailsChildren = [
-      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 300 }, children: [new TextRun({ text: '3. CHI TIẾT LỖ HỔNG', bold: true, size: 32, color: 'FFFFFF', font: FONT })] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 300 }, children: [new TextRun({ text: '3. CHI TIẾT LỖ HỔNG', bold: true, size: 32, color: 'F8FAFC', font: FONT })] }),
     ];
     vulns.forEach((v, i) => {
       detailsChildren.push(
@@ -172,16 +179,16 @@ async function genDocx() {
           width: { size: 9360, type: WidthType.DXA }, columnWidths: [2400, 6960], rows: [
             new TableRow({
               children: [
-                new TableCell({ borders: brd, width: { size: 2400, type: WidthType.DXA }, shading: { fill: '1A2240', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Mức độ', bold: true, size: 21, color: '00E5FF', font: FONT })] })] }),
+                new TableCell({ borders: brd, width: { size: 2400, type: WidthType.DXA }, shading: { fill: BG_LABEL, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Mức độ', bold: true, size: 21, color: CLR_ACCENT, font: FONT })] })] }),
                 sevCell(v.severity, 6960),
               ]
             }),
             new TableRow({
               children: [
-                new TableCell({ borders: brd, width: { size: 2400, type: WidthType.DXA }, shading: { fill: '1A2240', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Vị trí lỗi', bold: true, size: 21, color: '00E5FF', font: FONT })] })] }),
-                dataCell(v.location || '—', 6960, 'DDEEFF'),
+                new TableCell({ borders: brd, width: { size: 2400, type: WidthType.DXA }, shading: { fill: BG_LABEL, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 },
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Vị trí lỗi', bold: true, size: 21, color: CLR_ACCENT, font: FONT })] })] }),
+                dataCell(v.location || '—', 6960, CLR_BODY),
               ]
             }),
           ]
@@ -196,7 +203,7 @@ async function genDocx() {
         h3p('Tham Chiếu'),
         ...bodyP(v.refs || '—'),
         ...sp(),
-        new Paragraph({ children: [], border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: '2A3F70' } } }),
+        new Paragraph({ children: [], border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: '334155' } } }),
         ...sp(2),
       );
       if (i < vulns.length - 1) detailsChildren.push(new Paragraph({ children: [new PageBreak()] }));
@@ -204,15 +211,15 @@ async function genDocx() {
 
     const doc = new Document({
       styles: {
-        default: { document: { run: { font: FONT, size: 21 } }, paragraph: { spacing: { line: 360 } } },
+        default: { document: { run: { font: FONT, size: 21 } }, paragraph: { spacing: { line: 380 } } },
         paragraphStyles: [
-          { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 32, bold: true, font: FONT, color: 'FFFFFF' }, paragraph: { spacing: { before: 400, after: 240 }, outlineLevel: 0 } },
-          { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 26, bold: true, font: FONT, color: '00E5FF' }, paragraph: { spacing: { before: 320, after: 180 }, outlineLevel: 1 } },
-          { id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 24, bold: true, font: FONT, color: '7C3AED' }, paragraph: { spacing: { before: 260, after: 140 }, outlineLevel: 2 } },
+          { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 32, bold: true, font: FONT, color: 'F8FAFC' }, paragraph: { spacing: { before: 400, after: 240 }, outlineLevel: 0 } },
+          { id: 'Heading2', name: 'Heading 2', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 26, bold: true, font: FONT, color: CLR_ACCENT }, paragraph: { spacing: { before: 320, after: 180 }, outlineLevel: 1 } },
+          { id: 'Heading3', name: 'Heading 3', basedOn: 'Normal', next: 'Normal', quickFormat: true, run: { size: 24, bold: true, font: FONT, color: CLR_ACCENT2 }, paragraph: { spacing: { before: 260, after: 140 }, outlineLevel: 2 } },
         ]
       },
       sections: [{
-        properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 }, color: { pageColor: '070B16' } } },
+        properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 }, color: { pageColor: '0F172A' } } },
         children: [...coverChildren, ...summaryChildren, ...ovTableSection, ...detailsChildren]
       }]
     });

@@ -56,8 +56,9 @@ async function genPdf() {
     .pdf-page-break { page-break-before: always; }
   `;
 
-  let html = `
-    <!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><style>${style}</style></head><body>
+  const html = `
+    <style>${style}</style>
+    <div id="pdf-content" style="background:#070b16;color:#dde8ff;width:210mm;font-family:${fontFamily};">
     <div class="pdf-wrap">
       <div class="pdf-title">BÁO CÁO KIỂM THỬ BẢO MẬT</div>
       <div class="pdf-sub">SECURITY ASSESSMENT REPORT</div>
@@ -84,7 +85,7 @@ async function genPdf() {
     </div>
     <div class="pdf-wrap pdf-page-break">
       <div class="pdf-h1">1. TỔNG QUAN</div>
-      <p style="line-height:1.7;">Báo cáo này ghi nhận kết quả kiểm thử bảo mật ${escHtml(proj.name)}, thực hiện bởi ${escHtml(proj.auditor)} (${escHtml(proj.org)}) ngày ${escHtml(fmtDate(proj.date))}. Trưởng nhóm: ${escHtml(proj.leaderName)} — MSSV: ${escHtml(proj.leaderMSSV)} — Lớp: ${escHtml(proj.leaderClass)}.</p>
+      <p style="line-height:1.7;color:#dde8ff;">Báo cáo này ghi nhận kết quả kiểm thử bảo mật ${escHtml(proj.name)}, thực hiện bởi ${escHtml(proj.auditor)} (${escHtml(proj.org)}) ngày ${escHtml(fmtDate(proj.date))}. Trưởng nhóm: ${escHtml(proj.leaderName)} — MSSV: ${escHtml(proj.leaderMSSV)} — Lớp: ${escHtml(proj.leaderClass)}.</p>
       <div class="pdf-h3">Phạm vi kiểm thử</div>
       <div class="pdf-block">${escHtml(proj.scope) || '—'}</div>
       <div class="pdf-h3">Thống kê lỗ hổng</div>
@@ -128,27 +129,38 @@ async function genPdf() {
       <div class="pdf-footer">${escHtml(proj.name)} — ${escHtml(proj.leaderName)} | ${escHtml(proj.leaderMSSV)} | ${escHtml(proj.leaderClass)}</div>
     </div>
     `).join('')}
-    </body></html>
+    </div>
   `;
 
   try {
-    const opt = {
-      margin: 10,
-      filename: `Security_Report_${(proj.name || 'report').replace(/\s+/g, '_')}_${proj.date || 'report'}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'], before: '.pdf-page-break' },
-    };
     const container = document.createElement('div');
-    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:210mm;font-family:' + fontFamily + ';';
+    container.id = 'pdf-export-container';
+    container.style.cssText = 'position:fixed;left:50%;top:0;transform:translateX(-50%);width:210mm;max-width:100%;z-index:10000;background:#070b16;color:#dde8ff;max-height:100vh;overflow:auto;box-shadow:0 0 0 100vmax rgba(0,0,0,.8);';
     container.innerHTML = html;
     document.body.appendChild(container);
-    await html2pdf().set(opt).from(container).save();
+    const contentEl = container.querySelector('#pdf-content');
+    if (contentEl) contentEl.style.background = '#070b16';
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `Security_Report_${(proj.name || 'report').replace(/\s+/g, '_')}_${proj.date || 'report'}.pdf`,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#070b16',
+        allowTaint: true,
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: 'css', before: '.pdf-page-break' },
+    };
+    await html2pdf().set(opt).from(contentEl || container).save();
     document.body.removeChild(container);
     toast('Đã xuất file PDF thành công!', 'ok');
   } catch (e) {
     console.error(e);
+    const c = document.getElementById('pdf-export-container');
+    if (c) c.remove();
     toast('Lỗi tạo PDF: ' + (e.message || e), 'er');
   }
 }
