@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Report Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-glow"></div>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="shield">🛡️</div>
+      <h2>Security Report Generator</h2>
+      <p>// KIỂM THỬ BẢO MẬT — XÁC THỰC DANH TÍNH</p>
+    </div>
+    <div class="login-divider"><span>Thông tin nhóm</span></div>
+    <div class="lfg">
+      <label>Tên Trưởng Nhóm <span class="req">*</span></label>
+      <div class="linput-wrap"><span class="icon">✦</span><input id="li-name" type="text" placeholder="Nhập họ và tên đầy đủ" autocomplete="off"></div>
+      <span class="lerr" id="err-name">Vui lòng nhập tên trưởng nhóm!</span>
+    </div>
+    <div class="lfg">
+      <label>MSSV <span class="req">*</span></label>
+      <div class="linput-wrap"><span class="icon">◈</span><input id="li-mssv" type="text" placeholder="Nhập mã số sinh viên" autocomplete="off"></div>
+      <span class="lerr" id="err-mssv">Vui lòng nhập MSSV!</span>
+    </div>
+    <div class="lfg">
+      <label>Lớp <span class="req">*</span></label>
+      <div class="linput-wrap"><span class="icon">▣</span><input id="li-class" type="text" placeholder="Ví dụ: ATTT2021A, CNTT2022B" autocomplete="off"></div>
+      <span class="lerr" id="err-class">Vui lòng nhập lớp!</span>
+    </div>
+    <button type="button" id="btnLogin" class="btn-login">🚀 &nbsp; TRUY CẬP HỆ THỐNG</button>
+    <p class="login-note">Thông tin lưu trong trình duyệt (IndexedDB).<br>Không gửi dữ liệu lên server.</p>
+  </div>
+</div>
+
+<div id="mainApp">
+  <div class="wrap">
+    <div id="userBar">
+      <div class="ub-item"><span class="ub-label">Trưởng Nhóm</span><span class="ub-val" id="ub-name">—</span></div>
+      <div class="ub-sep"></div>
+      <div class="ub-item"><span class="ub-label">MSSV</span><span class="ub-val" id="ub-mssv">—</span></div>
+      <div class="ub-sep"></div>
+      <div class="ub-item"><span class="ub-label">Lớp</span><span class="ub-val" id="ub-class">—</span></div>
+      <div class="ub-right"><button class="btn-logout" onclick="doLogout()">⏏ Đổi thông tin</button></div>
+    </div>
+
+    <header>
+      <div class="badge"><span class="dot"></span> Security Report Generator</div>
+      <h1>Báo Cáo Kiểm Thử Bảo Mật</h1>
+      <p class="sub">// Nhập dữ liệu lỗ hổng → Xuất báo cáo DOCX & PDF chuyên nghiệp</p>
+    </header>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">📋</div> Thông Tin Dự Án</div>
+      <div class="fgrid">
+        <div class="fg">
+          <label>Tên Dự Án / Hệ Thống</label>
+          <input id="projName" type="text" placeholder="Ví dụ: Hệ thống Ngân hàng XYZ">
+        </div>
+        <div class="fg">
+          <label>Mục Tiêu / Target</label>
+          <input id="projTarget" type="text" placeholder="Ví dụ: 192.168.1.0/24, app.example.com">
+        </div>
+        <div class="fg">
+          <label>Đơn Vị Kiểm Thử</label>
+          <input id="projOrg" type="text" placeholder="Tên công ty / nhóm pentest">
+        </div>
+        <div class="fg">
+          <label>Kiểm Thử Viên</label>
+          <input id="projAuditor" type="text" placeholder="Họ và tên">
+        </div>
+        <div class="fg">
+          <label>Ngày Kiểm Thử</label>
+          <input id="projDate" type="date">
+        </div>
+        <div class="fg">
+          <label>Phiên Bản Báo Cáo</label>
+          <input id="projVer" type="text" placeholder="v1.0" value="v1.0">
+        </div>
+        <div class="fg full">
+          <label>Mô Tả Phạm Vi Kiểm Thử</label>
+          <textarea id="projScope" placeholder="Mô tả phạm vi, phương pháp kiểm thử, các hệ thống được kiểm tra..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-icon">🔍</div> Danh Sách Lỗ Hổng Bảo Mật</div>
+      <div class="stats" id="statsBar"></div>
+      <div class="vlist" id="vulnList"></div>
+      <div id="emptyState" class="empty-state">
+        <div class="empty-icon">🛡️</div>
+        <div>Chưa có lỗ hổng nào. Nhấn nút bên dưới để thêm.</div>
+      </div>
+      <div class="divider"></div>
+      <button class="btn-add" onclick="addVuln()">
+        <span>＋</span> Thêm Lỗ Hổng Mới
+      </button>
+    </div>
+
+    <div class="abar">
+      <button class="btn btn-doc" onclick="genDocx()">
+        <span>📄</span> Xuất File DOCX
+      </button>
+      <button class="btn btn-pdf" onclick="genPdf()">
+        <span>📕</span> Xuất File PDF
+      </button>
+      <button class="btn btn-clr" onclick="clearAll()">
+        <span>🗑️</span> Xóa Tất Cả
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/constants.js"></script>
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script src="js/export-docx.js"></script>
+<script src="js/export-pdf.js"></script>
+</body>
+</html>
