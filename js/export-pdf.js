@@ -47,6 +47,7 @@ async function genPdf() {
 
     #pdf-content {
       width: 210mm;
+      min-width: 794px;
       font-family: ${fontFamily};
       font-size: 11pt;
       color: #dde8ff;
@@ -218,31 +219,26 @@ async function genPdf() {
     await document.fonts.ready;
 
     const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.width = '794px';
-    container.style.visibility = 'hidden';
-    container.style.pointerEvents = 'none';
-    container.style.zIndex = '-1';
+    container.style.cssText = 'position:fixed;top:0;left:0;width:794px;max-width:100vw;z-index:9999;opacity:0.001;pointer-events:none;';
     container.innerHTML = html;
     document.body.appendChild(container);
 
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await new Promise(r => setTimeout(r, 300));
+
+    const target = container.querySelector('#pdf-content');
+    if (!target) throw new Error('Không tìm thấy nội dung PDF');
 
     const filename = `Bao_cao_bao_mat_${safeFilename(proj.name, proj.date)}.pdf`;
 
     await html2pdf().set({
       margin: 0,
       filename,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'png', quality: 1 },
       html2canvas: {
         scale: 2,
         useCORS: true,
         backgroundColor: '#0a0f1a',
-        logging: false,
-        windowWidth: container.scrollWidth,
-        windowHeight: container.scrollHeight
+        allowTaint: true
       },
       jsPDF: {
         unit: 'mm',
@@ -250,7 +246,7 @@ async function genPdf() {
         orientation: 'portrait'
       },
       pagebreak: { mode: ['css', 'legacy'] }
-    }).from(container).save();
+    }).from(target).save();
 
     document.body.removeChild(container);
     toast('Xuất PDF thành công!', 'ok');
